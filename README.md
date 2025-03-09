@@ -1,1 +1,2 @@
-# pyspark_etl_framework
+# PySpark ETL Framework
+The PySpark ETL Framework is built upon the PySpark big data processing framework. It provides a consistent, configuration-driven approach for data ingestion, transformation and distribution and enables highly scalable pipelines to be developed as the variety of data sources/sinks increases or the volume of data increases. Common utilities are also included as part of the framework which support commonly used operations across the data pipeline stages including connectors to data sources/sinks, data validation checkers, application loggers, etc.
