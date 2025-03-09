@@ -1,0 +1,7 @@
+- dataset_name: dataset1
+  path: data/raw/dataset1
+  req_validations:
+    - validation_type: primary_key_validation
+      cols_to_check: [product_id]
+    - validation_type: null_validation
+      cols_to_check: [item, quantity]

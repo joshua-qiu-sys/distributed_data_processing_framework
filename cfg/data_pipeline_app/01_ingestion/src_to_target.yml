@@ -1,0 +1,13 @@
+- dataset_name: dataset1
+  path: data/raw/dataset1
+  src:
+    connector: local_file
+    file_type: parquet
+  target:
+    connector: postgres
+    jdbc_url: jdbc:postgresql://localhost:5432
+    database: db1
+    schema: public
+    table: dataset1
+    concurrent_conns: 10
+    batch_size: 10000

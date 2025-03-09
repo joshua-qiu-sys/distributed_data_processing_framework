@@ -1,0 +1,5 @@
+2025-03-09 22:38:49 - pyspark_ingestion_app - INFO - Created application logger for application pyspark_ingestion_app
+2025-03-09 22:38:53 - pyspark_ingestion_app - INFO - Created Spark session for Pyspark Ingestion App
+2025-03-09 22:38:53 - pyspark_ingestion_app - INFO - Successfully read source to target configurations: [{'dataset_name': 'dataset1', 'path': 'data/raw/dataset1', 'src': {'connector': 'local_file', 'file_type': 'parquet'}, 'target': {'connector': 'postgres', 'jdbc_url': 'jdbc:postgresql://localhost:5432', 'database': 'db1', 'schema': 'public', 'table': 'dataset1', 'concurrent_conns': 10, 'batch_size': 10000}}]
+2025-03-09 22:38:53 - pyspark_ingestion_app - INFO - Successfully read source data validation configurations: [{'dataset_name': 'dataset1', 'path': 'data/raw/dataset1', 'req_validations': [{'validation_type': 'primary_key_validation', 'cols_to_check': ['product_id']}, {'validation_type': 'null_validation', 'cols_to_check': ['item', 'quantity']}]}]
+2025-03-09 22:38:55 - pyspark_ingestion_app - INFO - Loaded file data/raw/dataset1 into Dataframe
