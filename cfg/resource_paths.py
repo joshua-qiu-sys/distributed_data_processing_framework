@@ -5,3 +5,6 @@ INGEST_SRC_TO_TGT_CONF_SUBPATH = 'src_to_target.yml'
 INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH = 'src_data_validation.yml'
 TRANSFORM_CONF_SUBPATH = '02_transformation'
 DISTRIBUTE_CONF_SUBPATH = '03_distribution'
+
+CONNECTORS_CONF_PATH = 'cfg/connectors'
+POSTGRES_CONNECTOR_CONF_SUBPATH = 'postgresql/db_conn.properties'

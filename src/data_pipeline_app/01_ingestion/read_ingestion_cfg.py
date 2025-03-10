@@ -7,7 +7,7 @@ from cfg.resource_paths import APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SRC_TO
 SRC_TO_TGT_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SRC_TO_TGT_CONF_SUBPATH)
 SRC_DATA_VALIDATION_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH)
 
-logger = logging.getLogger(f'pyspark_ingestion_app')
+logger = logging.getLogger(f'pyspark_ingestion_app.{__name__}')
 
 class IngestionCfgReader:
     def __init__(self,

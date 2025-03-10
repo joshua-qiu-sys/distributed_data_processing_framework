@@ -7,7 +7,8 @@ class PysparkSessionBuilder:
     def get_or_create_spark_session(self, **kwargs) -> SparkSession:
         spark_builder = SparkSession \
             .builder \
-            .appName(self.app_name)
+            .appName(self.app_name) \
+            .config('spark.jars', 'jars/postgresql/postgresql-42.7.5.jar')
         
         kwargs.update({
             'spark.sql.shuffle.partitions': 20,
