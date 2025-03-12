@@ -1,10 +1,20 @@
-- dataset_name: dataset1
-  path: data/raw/dataset1
+dataset1:
   src:
     connector: local_file
     file_type: parquet
+    path: data/raw/dataset1
   target:
     connector: postgres
     conn_id: DEFAULT
+    db_table: test_table
     concurrent_conns: 10
     batch_size: 10000
+dataset2:
+  src:
+    connector: local_file
+    file_type: parquet
+    path: data/raw/dataset2
+  target:
+    connector: local_file
+    file_type: parquet
+    path: data/processed/dataset2

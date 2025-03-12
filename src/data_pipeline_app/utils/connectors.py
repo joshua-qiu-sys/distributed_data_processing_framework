@@ -3,7 +3,7 @@ from typing import Dict
 from pathlib import Path
 from abc import ABC, abstractmethod
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
-from data_pipeline_app.utils.cfg_reader import CfgReader
+from data_pipeline_app.utils.cfg_reader import IniCfgReader
 from cfg.resource_paths import CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH
 
 class LocalFileConnector:
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     df = file_connector.read_file()
 
     postgres_conf_path = Path(CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH)
-    postgres_db_conn_cfg = CfgReader(file_path=postgres_conf_path).read_cfg()['DEFAULT']
+    postgres_db_conn_cfg = IniCfgReader().read_cfg(file_path=postgres_conf_path)['DEFAULT']
     postgres_db_conn_details = {
         'url': postgres_db_conn_cfg['jdbc_url'],
         'schema': postgres_db_conn_cfg['schema'],

@@ -10,6 +10,7 @@ class DatasetIngestion:
         pass
 
 def main():
+
     app_logger = ApplicationLogger(log_app_name='pyspark_ingestion_app', log_conf_section='INGESTION')
     logger = app_logger.get_logger()
     logger.info(f'Created application logger for application {app_logger.get_log_app_name()}')
@@ -18,10 +19,13 @@ def main():
     spark = spark_session_builder.get_or_create_spark_session()
     logger.info(f'Created Spark session for {spark_session_builder.get_app_name()}')
 
+    # target state --> dataset_name should be derived from the event json received
+    dataset_name = 'dataset1'
+
     ingest_cfg_reader = IngestionCfgReader()
-    src_to_tgt_cfg = ingest_cfg_reader.read_src_to_tgt_cfg()
+    src_to_tgt_cfg = ingest_cfg_reader.read_src_to_tgt_cfg()[dataset_name]
     logger.info(f'Successfully read source to target configurations: {src_to_tgt_cfg}')
-    src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()
+    src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[dataset_name]
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
     
     file_connector = LocalFileConnector(spark=spark, file_path='data/raw/dataset1')
@@ -30,12 +34,11 @@ def main():
     logger.info(f'Loaded file {file} into Dataframe')
     logger.info(f'{df.take(10)}')
 
-    src_data_vald_cfg
-    validations = [vald['validation_type'] for vald in src_data_vald_cfg[0]['req_validations']]
+    validations = [vald for vald in src_data_vald_cfg['req_validations'].keys()]
     logger.info(f'Validations to perform: {validations}')
-    primary_key_cols = list(itertools.chain.from_iterable([vald['cols_to_check'] for vald in src_data_vald_cfg[0]['req_validations'] if vald['validation_type'] == 'primary_key_validation']))
+    primary_key_cols = src_data_vald_cfg['req_validations']['primary_key_validation']['cols_to_check']
     logger.info(f'Primary key cols: {primary_key_cols}')
-    non_nullable_cols = list(itertools.chain.from_iterable([vald['cols_to_check'] for vald in src_data_vald_cfg[0]['req_validations'] if vald['validation_type'] == 'null_validation']))
+    non_nullable_cols = primary_key_cols = src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
     logger.info(f'Non-nullable cols: {non_nullable_cols}')
     dataset_vald = DatasetValidation(spark=spark,
                                      df=df,

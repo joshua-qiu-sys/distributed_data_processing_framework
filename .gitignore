@@ -1,0 +1,7 @@
+**/__pycache__
+.venv/
+.vscode/
+data/
+cfg/connectors/
+logs/
+jars/
