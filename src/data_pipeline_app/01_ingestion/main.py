@@ -28,10 +28,10 @@ def main():
     src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[dataset_name]
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
     
-    file_connector = LocalFileConnector(spark=spark, file_path='data/raw/dataset1')
-    file = file_connector.get_file_path()
-    df = file_connector.read_file()
-    logger.info(f'Loaded file {file} into Dataframe')
+    file_path = 'data/raw/dataset1'
+    file_connector = LocalFileConnector(spark=spark)
+    df = file_connector.read_file_as_df(file_path=file_path, file_type='parquet')
+    logger.info(f'Loaded file {file_path} into Dataframe')
     logger.info(f'{df.take(10)}')
 
     validations = [vald for vald in src_data_vald_cfg['req_validations'].keys()]
@@ -46,7 +46,7 @@ def main():
                                      primary_key_cols=primary_key_cols,
                                      non_nullable_cols=non_nullable_cols)
     dataset_vald.perform_req_validations()
-    logger.info(f'Performed required validations for {file}')
+    logger.info(f'Performed required validations for {file_path}')
     for vald_checker in dataset_vald.get_vald_checker_list():
         vald_type = vald_checker.get_vald_type()
         vald_passed = vald_checker.get_vald_result().get_vald_passed()
@@ -57,6 +57,8 @@ def main():
         logger.info(f'Validation dataframe - dataset level: {df_vald_result_dataset_level.show()}')
         if df_vald_result_record_level is not None:
             logger.info(f'Validation dataframe - record level: {df_vald_result_record_level.collect()}')
+
+    file_connector.write_df_to_file(df=df, file_path='data/processed/dataset1', file_type='csv', write_mode='overwrite')
 
 if __name__ == '__main__':
     main()
