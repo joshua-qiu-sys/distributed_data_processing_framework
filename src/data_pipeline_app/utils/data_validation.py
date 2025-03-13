@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession, DataFrame, Row
 import pyspark.sql.functions as F
 import datetime as dt
-from typing import List, Dict
+from typing import List, Dict, Optional, Union
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
 from data_pipeline_app.utils.connectors import LocalFileConnector
 
@@ -36,9 +36,9 @@ class DatasetValidationChecker:
                  spark: SparkSession,
                  df: DataFrame,
                  vald_type: str,
-                 computed_df_metrics: Dict = None,
-                 primary_key_cols: List[str] = None,
-                 non_nullable_cols: List[str] = None):
+                 computed_df_metrics: Optional[Dict[str, Union[int, float]]] = None,
+                 primary_key_cols: Optional[List[str]] = None,
+                 non_nullable_cols: Optional[List[str]] = None):
         
         self.spark = spark
         self.df = df
@@ -144,8 +144,8 @@ class DatasetValidation:
                  spark: SparkSession,
                  df: DataFrame,
                  vald_types: List[str],
-                 primary_key_cols: List[str] = None,
-                 non_nullable_cols: List[str] = None):
+                 primary_key_cols: Optional[List[str]] = None,
+                 non_nullable_cols: Optional[List[str]] = None):
         self.spark = spark
         self.df = df
         self.vald_types = vald_types
@@ -154,7 +154,7 @@ class DatasetValidation:
         self.vald_checker_list = None
         self._df_count = None
 
-    def _compute_df_metrics(self) -> Dict:
+    def _compute_df_metrics(self) -> Dict[str, Union[int, float]]:
         self._df_count = self.df.count()
         return {
             'count': self._df_count

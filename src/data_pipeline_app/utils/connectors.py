@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession, DataFrame
-from typing import Dict
+from typing import Dict, Optional, Union
 from pathlib import Path
 from abc import ABC, abstractmethod
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
@@ -7,16 +7,19 @@ from data_pipeline_app.utils.cfg_reader import IniCfgReader
 from cfg.resource_paths import CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH
 
 class LocalFileConnector:
-    def __init__(self, spark: SparkSession = None):
+    def __init__(self, spark: Optional[SparkSession] = None):
         self.spark = spark
 
-    def read_file_as_df(self, file_path: Path, file_type: str = 'parquet', read_props: Dict = None) -> DataFrame:
+    def read_file_as_df(self,
+                        file_path: Path,
+                        file_type: str = 'parquet',
+                        read_props: Optional[Dict[str, Union[str, int]]] = None) -> DataFrame:
 
         if file_type not in ['parquet', 'csv', 'json', 'orc']:
             raise ValueError(f'Cannot read file. Unknown file type: {file_type}')
         
         if self.spark is None:
-            raise Exception('LocalFileConnector must be instantiated with a SparkSession object')
+            raise Exception('LocalFileConnector must be instantiated with a SparkSession object to read file')
 
         df_reader = self.spark.read
         if read_props is not None:
@@ -39,8 +42,11 @@ class LocalFileConnector:
         return df
     
     def write_df_to_file(self,
-                         df: DataFrame, file_path: Path, file_type: str = 'parquet',
-                         write_mode: str = 'overwrite', write_props: Dict = None) -> None:
+                         df: DataFrame,
+                         file_path: Path,
+                         file_type: str = 'parquet',
+                         write_mode: str = 'overwrite',
+                         write_props: Optional[Dict[str, Union[str, int]]] = None) -> None:
 
         if file_type not in ['parquet', 'csv', 'json', 'orc']:
             raise ValueError(f'Cannot write DataFrame to file. Unknown file type: {file_type}')
@@ -71,19 +77,20 @@ class ConnectionInterface(ABC):
         raise NotImplementedError
 
 class PostgreSQLConnector(ConnectionInterface):
-    def __init__(self, spark: SparkSession, db_conn_details: Dict):
+    def __init__(self, db_conn_details: Dict[str, str], spark: Optional[SparkSession] = None):
         self.spark = spark
         self.db_conn_details = db_conn_details
 
     def connect(self):
         pass
 
-    def read_db_table_as_df(self, db_input_loc: Dict = None) -> DataFrame:
+    def read_db_table_as_df(self, db_input_loc: Dict[str, str]) -> DataFrame:
+
+        if self.spark is None:
+            raise Exception('PostgreSQLConnector must be instantiated with a SparkSession object to read database table')
 
         read_props = self.db_conn_details.copy()
         read_props.update(db_input_loc)
-        print(f'read props: {read_props}')
-        print(f'read props: {read_props.items()}')
 
         df_reader = self.spark.read \
             .format("jdbc")
@@ -102,9 +109,11 @@ if __name__ == '__main__':
     spark = spark_session_builder.get_or_create_spark_session()
     file_connector = LocalFileConnector(spark=spark)
     df = file_connector.read_file_as_df(file_path='data/raw/dataset1', file_type='parquet')
+    df.show()
 
     postgres_conf_path = Path(CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH)
     postgres_db_conn_cfg = IniCfgReader().read_cfg(file_path=postgres_conf_path)['DEFAULT']
+    print(f'Postgres DB connection cfg:\n{postgres_db_conn_cfg}')
     postgres_db_conn_details = {
         'url': postgres_db_conn_cfg['jdbc_url'],
         'schema': postgres_db_conn_cfg['schema'],
