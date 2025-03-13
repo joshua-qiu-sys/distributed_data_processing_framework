@@ -78,17 +78,19 @@ class DatasetValidationChecker:
             .select(['validation_type', 'observed_record_pk', 'expected_count', 'observed_count', 'ts'])
         
         if df_vald_result_record_level.count() > 0:
+            vald_passed = False
             err_record_count = df_vald_result_record_level.filter(F.col('observed_count')).agg(F.sum(F.col('observed_count')))
             vald_result_dataset_level_data = [
                 Row(validation_type=self.vald_type, passed=False, total_records=self._df_count, error_records=err_record_count, ts=curr_dt)
             ]
         else:
+            vald_passed = True
             df_vald_result_record_level = None
             vald_result_dataset_level_data = [
                 Row(validation_type=self.vald_type, passed=True, total_records=self._df_count, error_records=0, ts=curr_dt),
             ]
         df_vald_result_dataset_level = self.spark.createDataFrame(data=vald_result_dataset_level_data)
-        vald_result = DatasetValidationResult(spark=self.spark, vald_type=self.vald_type, vald_passed=False,
+        vald_result = DatasetValidationResult(spark=self.spark, vald_type=self.vald_type, vald_passed=vald_passed,
                                               df_vald_result_dataset_level=df_vald_result_dataset_level,
                                               df_vald_result_record_level=df_vald_result_record_level)
         self.set_vald_result(vald_result=vald_result)
@@ -107,17 +109,19 @@ class DatasetValidationChecker:
             .select(['validation_type', 'observed_record_pk', 'expected_count', 'observed_count', 'ts'])
         
         if df_vald_result_record_level.count() > 0:
+            vald_passed = False
             err_record_count = df_vald_result_record_level.filter(F.col('observed_count')).agg(F.sum(F.col('observed_count')))
             vald_result_dataset_level_data = [
                 Row(validation_type=self.vald_type, passed=False, total_records=self._df_count, error_records=err_record_count, ts=curr_dt)
             ]
         else:
+            vald_passed = True
             df_vald_result_record_level = None
             vald_result_dataset_level_data = [
                 Row(validation_type=self.vald_type, passed=True, total_records=self._df_count, error_records=0, ts=curr_dt),
             ]
         df_vald_result_dataset_level = self.spark.createDataFrame(data=vald_result_dataset_level_data)
-        vald_result = DatasetValidationResult(spark=self.spark, vald_type=self.vald_type, vald_passed=True,
+        vald_result = DatasetValidationResult(spark=self.spark, vald_type=self.vald_type, vald_passed=vald_passed,
                                               df_vald_result_dataset_level=df_vald_result_dataset_level,
                                               df_vald_result_record_level=df_vald_result_record_level)
         self.set_vald_result(vald_result=vald_result)
