@@ -19,13 +19,13 @@ def main():
     spark = spark_session_builder.get_or_create_spark_session()
     logger.info(f'Created Spark session for {spark_session_builder.get_app_name()}')
 
-    # target state --> dataset_name should be derived from the event json received
-    dataset_name = 'dataset1'
+    # target state --> etl id should be fetched from the event json received and used for fetching other etl details
+    etl_id = 'ingest~dataset1'
 
     ingest_cfg_reader = IngestionCfgReader()
-    src_to_tgt_cfg = ingest_cfg_reader.read_src_to_tgt_cfg()[dataset_name]
+    src_to_tgt_cfg = ingest_cfg_reader.read_src_to_tgt_cfg()[etl_id]
     logger.info(f'Successfully read source to target configurations: {src_to_tgt_cfg}')
-    src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[dataset_name]
+    src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[etl_id]
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
     
     file_path = 'data/raw/dataset1'

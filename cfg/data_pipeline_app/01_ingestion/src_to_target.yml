@@ -1,6 +1,7 @@
-dataset1:
+ingest~dataset1:
   src:
     connector: local_file
+    dataset_name: dataset1
     file_type: parquet
     path: data/raw/dataset1
   target:
@@ -9,9 +10,10 @@ dataset1:
     db_table: test_table
     concurrent_conns: 10
     batch_size: 10000
-dataset2:
+ingest~dataset2:
   src:
     connector: local_file
+    dataset_name: dataset2
     file_type: parquet
     path: data/raw/dataset2
   target:

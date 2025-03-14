@@ -81,28 +81,41 @@ class PostgreSQLConnector(ConnectionInterface):
         self.spark = spark
         self.db_conn_details = db_conn_details
 
+        try:
+            self.connect()
+        except ConnectionError:
+            raise ConnectionError('PostgreSQLConnector could not establish a connection with the provided database connection details')
+
     def connect(self):
         pass
 
-    def read_db_table_as_df(self, db_input_loc: Dict[str, str]) -> DataFrame:
+    def read_db_table_as_df(self, read_props: Dict[str, Union[str, int]]) -> DataFrame:
 
         if self.spark is None:
             raise Exception('PostgreSQLConnector must be instantiated with a SparkSession object to read database table')
-
-        read_props = self.db_conn_details.copy()
-        read_props.update(db_input_loc)
-
-        df_reader = self.spark.read \
-            .format("jdbc")
         
-        for k, v in read_props.items():
+        upd_read_props = self.db_conn_details.copy()
+        upd_read_props.update(read_props)
+
+        df_reader = self.spark.read.format('jdbc')
+        
+        for k, v in upd_read_props.items():
             df_reader = df_reader.option(k, v)
 
         df = df_reader.load()
         return df
 
-    def write_df_to_db_table(self, df: DataFrame) -> None:
-        pass
+    def write_df_to_db_table(self, df: DataFrame, write_props: Dict[str, Union[str, int]], write_mode: str = 'append') -> None:
+        
+        upd_write_props = self.db_conn_details.copy()
+        upd_write_props.update(write_props)
+
+        df_writer = df.write.format('jdbc')
+
+        for k, v in upd_write_props.items():
+            df_writer = df_writer.option(k, v)
+
+        df_writer.mode(write_mode).save()
     
 if __name__ == '__main__':
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
@@ -116,15 +129,19 @@ if __name__ == '__main__':
     print(f'Postgres DB connection cfg:\n{postgres_db_conn_cfg}')
     postgres_db_conn_details = {
         'url': postgres_db_conn_cfg['jdbc_url'],
+        'driver': postgres_db_conn_cfg['driver'],
         'schema': postgres_db_conn_cfg['schema'],
         'user': postgres_db_conn_cfg['user'],
         'password': postgres_db_conn_cfg['password']
     }
     postgres_connector = PostgreSQLConnector(spark=spark, db_conn_details=postgres_db_conn_details)
-    postgres_db_input_loc = {
+    postgres_db_table_read_props = {
         'schema': 'dev',
-        'dbtable': 'dev.test_table',
-        'driver': 'org.postgresql.Driver'
+        'dbtable': 'dev.test_table'
     }
-    df_postgres_table = postgres_connector.read_db_table_as_df(db_input_loc=postgres_db_input_loc)
+    df_postgres_table = postgres_connector.read_db_table_as_df(read_props=postgres_db_table_read_props)
     df_postgres_table.show()
+
+    df_write_to_postgres = spark.createDataFrame(data=[{'person': 'John', 'age': 20}, {'person': 'James', 'age': 30}])
+    postgres_connector.write_df_to_db_table(df=df_write_to_postgres, write_props={'schema': 'dev', 'dbtable': 'dev.person_table'}, write_mode='overwrite')
+    df_write_to_postgres.show()
