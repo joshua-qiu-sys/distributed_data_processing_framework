@@ -4,7 +4,9 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
 from data_pipeline_app.utils.cfg_reader import IniCfgReader
-from cfg.resource_paths import CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH
+from cfg.resource_paths import CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH
+
+POSTGRES_CONF_PATH = Path(CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH)
 
 class LocalFileConnector:
     def __init__(self, spark: Optional[SparkSession] = None):
@@ -77,9 +79,17 @@ class ConnectionInterface(ABC):
         raise NotImplementedError
 
 class PostgreSQLConnector(ConnectionInterface):
-    def __init__(self, db_conn_details: Dict[str, str], spark: Optional[SparkSession] = None):
+    def __init__(self,
+                 db_conf_path: Optional[Path] = POSTGRES_CONF_PATH,
+                 db_conf_conn_id: Optional[str] = 'DEFAULT',
+                 db_conn_details: Optional[Dict[str, str]] = None,
+                 spark: Optional[SparkSession] = None):
+        
         self.spark = spark
-        self.db_conn_details = db_conn_details
+        if db_conn_details is None:
+            self.db_conn_details = IniCfgReader().read_cfg(file_path=db_conf_path, interpolation=None)[db_conf_conn_id]
+        else:
+            self.db_conn_details = db_conn_details
 
         try:
             self.connect()
@@ -124,17 +134,7 @@ if __name__ == '__main__':
     df = file_connector.read_file_as_df(file_path='data/raw/dataset1', file_type='parquet')
     df.show()
 
-    postgres_conf_path = Path(CONNECTORS_CONF_PATH, POSTGRES_CONNECTOR_CONF_SUBPATH)
-    postgres_db_conn_cfg = IniCfgReader().read_cfg(file_path=postgres_conf_path)['DEFAULT']
-    print(f'Postgres DB connection cfg:\n{postgres_db_conn_cfg}')
-    postgres_db_conn_details = {
-        'url': postgres_db_conn_cfg['jdbc_url'],
-        'driver': postgres_db_conn_cfg['driver'],
-        'schema': postgres_db_conn_cfg['schema'],
-        'user': postgres_db_conn_cfg['user'],
-        'password': postgres_db_conn_cfg['password']
-    }
-    postgres_connector = PostgreSQLConnector(spark=spark, db_conn_details=postgres_db_conn_details)
+    postgres_connector = PostgreSQLConnector(spark=spark)
     postgres_db_table_read_props = {
         'schema': 'dev',
         'dbtable': 'dev.test_table'

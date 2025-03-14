@@ -1,0 +1,111 @@
+default:
+
+  "spark.jars": {{ postgres }}
+
+  "spark.driver.cores": 1
+  "spark.driver.memory": 7g
+  "spark.driver.memoryOverhead": 1g
+  
+  "spark.executor.cores": 2
+  "spark.executor.memory": 7g
+  "spark.executor.memoryOverhead": 1g
+
+  "spark.memory.fraction": 0.6
+  "spark.memory.storageFraction": 0.5
+
+  "spark.dynamicAllocation.enabled": true
+  "spark.dynamicAllocation.minExecutors": 2
+  "spark.dynamicAllocation.maxExecutors": 3
+
+  "spark.default.parallelism": 24
+  "spark.shuffle.partitions": 24
+  "spark.shuffle.service.enabled": true
+  "spark.sql.autoBroadcastJoinThreshold": 10MB
+  
+  "spark.sql.adaptive.enabled": true
+  "spark.sql.adaptive.coalescePartitions.enabled": true
+  "spark.sql.adaptive.coalescePartitions.minPartitionNum": 12
+  "spark.sql.adaptive.advisoryPartitionSizeInBytes": 64MB
+  "spark.sql.adaptive.autoBroadcastJoinThreshold": 10MB
+
+  "spark.files.openCostInBytes": 4194304 # 4MB
+  "spark.io.compression.codec": lz4
+  "spark.sql.parquet.compression.codec": snappy
+  "spark.sql.parquet.filterPushdown": true
+
+  "spark.eventLog.enabled": true
+  "spark.eventLog.dir": event_logs/01_ingestion
+
+ingest~dataset1:
+
+  "spark.jars": {{ postgres }}
+
+  "spark.driver.cores": 1
+  "spark.driver.memory": 7g
+  "spark.driver.memoryOverhead": 1g
+  
+  "spark.executor.cores": 2
+  "spark.executor.memory": 7g
+  "spark.executor.memoryOverhead": 1g
+
+  "spark.memory.fraction": 0.6
+  "spark.memory.storageFraction": 0.5
+
+  "spark.dynamicAllocation.enabled": true
+  "spark.dynamicAllocation.minExecutors": 2
+  "spark.dynamicAllocation.maxExecutors": 3
+
+  "spark.default.parallelism": 24
+  "spark.shuffle.partitions": 24
+  "spark.shuffle.service.enabled": true
+  "spark.sql.autoBroadcastJoinThreshold": 10MB
+  
+  "spark.sql.adaptive.enabled": true
+  "spark.sql.adaptive.coalescePartitions.enabled": true
+  "spark.sql.adaptive.coalescePartitions.minPartitionNum": 12
+  "spark.sql.adaptive.advisoryPartitionSizeInBytes": 64MB
+  "spark.sql.adaptive.autoBroadcastJoinThreshold": 10MB
+
+  "spark.files.openCostInBytes": 4194304 # 4MB
+  "spark.io.compression.codec": lz4
+  "spark.sql.parquet.compression.codec": snappy
+  "spark.sql.parquet.filterPushdown": true
+
+  "spark.eventLog.enabled": true
+  "spark.eventLog.dir": event_logs/01_ingestion
+
+ingest~dataset2:
+
+  "spark.driver.cores": 1
+  "spark.driver.memory": 7g
+  "spark.driver.memoryOverhead": 1g
+  
+  "spark.executor.cores": 2
+  "spark.executor.memory": 7g
+  "spark.executor.memoryOverhead": 1g
+
+  "spark.memory.fraction": 0.6
+  "spark.memory.storageFraction": 0.5
+
+  "spark.dynamicAllocation.enabled": true
+  "spark.dynamicAllocation.minExecutors": 2
+  "spark.dynamicAllocation.maxExecutors": 3
+
+  "spark.default.parallelism": 24
+  "spark.shuffle.partitions": 24
+  "spark.shuffle.service.enabled": true
+  "spark.sql.autoBroadcastJoinThreshold": 10MB
+  
+  "spark.sql.adaptive.enabled": true
+  "spark.sql.adaptive.coalescePartitions.enabled": true
+  "spark.sql.adaptive.coalescePartitions.minPartitionNum": 12
+  "spark.sql.adaptive.advisoryPartitionSizeInBytes": 64MB
+  "spark.sql.adaptive.autoBroadcastJoinThreshold": 10MB
+
+  "spark.files.openCostInBytes": 4194304 # 4MB
+  "spark.io.compression.codec": lz4
+  "spark.sql.parquet.compression.codec": snappy
+  "spark.sql.parquet.filterPushdown": true
+
+  "spark.eventLog.enabled": true
+  "spark.eventLog.dir": event_logs/01_ingestion

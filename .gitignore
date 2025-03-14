@@ -3,5 +3,7 @@
 .vscode/
 data/
 cfg/connectors/
-logs/
 jars/
+!cfg/jars/
+logs/
+event_logs/

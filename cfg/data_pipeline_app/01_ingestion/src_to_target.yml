@@ -10,6 +10,7 @@ ingest~dataset1:
     db_table: test_table
     concurrent_conns: 10
     batch_size: 10000
+
 ingest~dataset2:
   src:
     connector: local_file
