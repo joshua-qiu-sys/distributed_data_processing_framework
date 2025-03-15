@@ -22,23 +22,10 @@ class LocalFileConnector(AbstractConnector):
         self.spark = spark
 
     def read_from_source(self, **kwargs) -> DataFrame:
-
-        # file_path = kwargs['file_path']
-        # file_type = kwargs['file_type']
-        # read_props = kwargs['read_props']
-
-        # df = self.read_file_as_df(file_path=file_path, file_type=file_type, read_props=read_props)
         df = self.read_file_as_df(**kwargs)
         return df
     
     def write_to_sink(self, df: DataFrame, **kwargs) -> None:
-        
-        # file_path = kwargs['file_path']
-        # file_type = kwargs['file_type']
-        # write_mode = kwargs['write_mode']
-        # write_props = kwargs['write_props']
-
-        # self.write_df_to_file(df=df, file_path=file_path, file_type=file_type, write_mode=write_mode, write_props=write_props)
         self.write_df_to_file(df=df, **kwargs)
 
     def read_file_as_df(self,
@@ -142,25 +129,10 @@ class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
         self.db_conn_details = IniCfgReader().read_cfg(file_path=self.db_conf_path, interpolation=None)[self.db_conf_conn_id]
 
     def read_from_source(self, **kwargs) -> DataFrame:
-
-        # db_conf_conn_id = kwargs['db_conf_conn_id']
-        # schema = kwargs['schema']
-        # db_table = kwargs['db_table']
-        # read_props = kwargs['read_props']
-
-        # df = self.read_db_table_as_df(db_conf_conn_id=db_conf_conn_id, schema=schema, db_table=db_table, read_props=read_props)
         df = self.read_db_table_as_df(**kwargs)
         return df
     
     def write_to_sink(self, df: DataFrame, **kwargs):
-
-        # db_conf_conn_id = kwargs['db_conf_conn_id']
-        # schema = kwargs['schema']
-        # db_table = kwargs['db_table']
-        # write_mode = kwargs['write_mode']
-        # write_props = kwargs['write_props']
-        
-        # self.write_df_to_db_table(df=df, db_conf_conn_id=db_conf_conn_id, schema=schema, db_table=db_table, write_mode=write_mode, write_props=write_props)
         self.write_df_to_db_table(df=df, **kwargs)
 
     def read_db_table_as_df(self, db_conf_conn_id: str, schema: str, db_table: str, read_props: Dict[str, Union[str, int, float]] = None) -> DataFrame:
