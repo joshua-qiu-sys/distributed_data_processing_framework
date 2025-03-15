@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession, DataFrame
-from typing import Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 from pathlib import Path
 from abc import ABC, abstractmethod
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
@@ -8,14 +8,43 @@ from cfg.resource_paths import CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUB
 
 POSTGRES_CONF_PATH = Path(CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH)
 
-class LocalFileConnector:
+class AbstractConnector(ABC):
+    @abstractmethod
+    def read_from_source(self, **kwargs) -> DataFrame:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def write_to_sink(self, df: DataFrame, **kwargs) -> None:
+        raise NotImplementedError
+
+class LocalFileConnector(AbstractConnector):
     def __init__(self, spark: Optional[SparkSession] = None):
         self.spark = spark
+
+    def read_from_source(self, **kwargs) -> DataFrame:
+
+        # file_path = kwargs['file_path']
+        # file_type = kwargs['file_type']
+        # read_props = kwargs['read_props']
+
+        # df = self.read_file_as_df(file_path=file_path, file_type=file_type, read_props=read_props)
+        df = self.read_file_as_df(**kwargs)
+        return df
+    
+    def write_to_sink(self, df: DataFrame, **kwargs) -> None:
+        
+        # file_path = kwargs['file_path']
+        # file_type = kwargs['file_type']
+        # write_mode = kwargs['write_mode']
+        # write_props = kwargs['write_props']
+
+        # self.write_df_to_file(df=df, file_path=file_path, file_type=file_type, write_mode=write_mode, write_props=write_props)
+        self.write_df_to_file(df=df, **kwargs)
 
     def read_file_as_df(self,
                         file_path: Path,
                         file_type: str = 'parquet',
-                        read_props: Optional[Dict[str, Union[str, int]]] = None) -> DataFrame:
+                        read_props: Optional[Dict[str, Union[str, int, float]]] = None) -> DataFrame:
 
         if file_type not in ['parquet', 'csv', 'json', 'orc']:
             raise ValueError(f'Cannot read file. Unknown file type: {file_type}')
@@ -48,7 +77,7 @@ class LocalFileConnector:
                          file_path: Path,
                          file_type: str = 'parquet',
                          write_mode: str = 'overwrite',
-                         write_props: Optional[Dict[str, Union[str, int]]] = None) -> None:
+                         write_props: Optional[Dict[str, Union[str, int, float]]] = None) -> None:
 
         if file_type not in ['parquet', 'csv', 'json', 'orc']:
             raise ValueError(f'Cannot write DataFrame to file. Unknown file type: {file_type}')
@@ -73,12 +102,12 @@ class LocalFileConnector:
         
         return df
     
-class ConnectionInterface(ABC):
+class ExternalConnectionInterface(ABC):
     @abstractmethod
     def connect(self):
         raise NotImplementedError
 
-class PostgreSQLConnector(ConnectionInterface):
+class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
     def __init__(self,
                  db_conf_path: Optional[Path] = POSTGRES_CONF_PATH,
                  db_conf_conn_id: Optional[str] = 'DEFAULT',
@@ -87,8 +116,13 @@ class PostgreSQLConnector(ConnectionInterface):
         
         self.spark = spark
         if db_conn_details is None:
+            self.db_conf_path = db_conf_path
+            self.db_conf_conn_id = db_conf_conn_id
             self.db_conn_details = IniCfgReader().read_cfg(file_path=db_conf_path, interpolation=None)[db_conf_conn_id]
+        
         else:
+            self.db_conf_path = None
+            self.db_conf_conn_id = None
             self.db_conn_details = db_conn_details
 
         try:
@@ -99,13 +133,51 @@ class PostgreSQLConnector(ConnectionInterface):
     def connect(self):
         pass
 
-    def read_db_table_as_df(self, read_props: Dict[str, Union[str, int]]) -> DataFrame:
+    def set_db_conf_path(self, db_conf_path: Path) -> None:
+        self.db_conf_path = db_conf_path
+        self.db_conn_details = IniCfgReader().read_cfg(file_path=self.db_conf_path, interpolation=None)[self.db_conf_conn_id]
+
+    def set_db_conf_conn_id(self, db_conf_conn_id: str) -> None:
+        self.db_conf_conn_id = db_conf_conn_id
+        self.db_conn_details = IniCfgReader().read_cfg(file_path=self.db_conf_path, interpolation=None)[self.db_conf_conn_id]
+
+    def read_from_source(self, **kwargs) -> DataFrame:
+
+        # db_conf_conn_id = kwargs['db_conf_conn_id']
+        # schema = kwargs['schema']
+        # db_table = kwargs['db_table']
+        # read_props = kwargs['read_props']
+
+        # df = self.read_db_table_as_df(db_conf_conn_id=db_conf_conn_id, schema=schema, db_table=db_table, read_props=read_props)
+        df = self.read_db_table_as_df(**kwargs)
+        return df
+    
+    def write_to_sink(self, df: DataFrame, **kwargs):
+
+        # db_conf_conn_id = kwargs['db_conf_conn_id']
+        # schema = kwargs['schema']
+        # db_table = kwargs['db_table']
+        # write_mode = kwargs['write_mode']
+        # write_props = kwargs['write_props']
+        
+        # self.write_df_to_db_table(df=df, db_conf_conn_id=db_conf_conn_id, schema=schema, db_table=db_table, write_mode=write_mode, write_props=write_props)
+        self.write_df_to_db_table(df=df, **kwargs)
+
+    def read_db_table_as_df(self, db_conf_conn_id: str, schema: str, db_table: str, read_props: Dict[str, Union[str, int, float]] = None) -> DataFrame:
 
         if self.spark is None:
             raise Exception('PostgreSQLConnector must be instantiated with a SparkSession object to read database table')
         
+        if db_conf_conn_id != self.db_conf_conn_id:
+            self.set_db_conf_conn_id(db_conf_conn_id)
+        
         upd_read_props = self.db_conn_details.copy()
-        upd_read_props.update(read_props)
+        upd_read_props.update({
+            'schema': schema,
+            'dbtable': db_table
+        })
+        if read_props is not None:
+            upd_read_props.update(read_props)
 
         df_reader = self.spark.read.format('jdbc')
         
@@ -115,10 +187,24 @@ class PostgreSQLConnector(ConnectionInterface):
         df = df_reader.load()
         return df
 
-    def write_df_to_db_table(self, df: DataFrame, write_props: Dict[str, Union[str, int]], write_mode: str = 'append') -> None:
+    def write_df_to_db_table(self,
+                             df: DataFrame,
+                             db_conf_conn_id: str,
+                             schema: str,
+                             db_table: str,
+                             write_mode: str = 'append',
+                             write_props: Dict[str, Union[str, int, float]] = None) -> None:
+        
+        if db_conf_conn_id != self.db_conf_conn_id:
+            self.set_db_conf_conn_id(db_conf_conn_id)
         
         upd_write_props = self.db_conn_details.copy()
-        upd_write_props.update(write_props)
+        upd_write_props.update({
+            'schema': schema,
+            'dbtable': db_table,
+        })
+        if write_props is not None:
+            upd_write_props.update(write_props)
 
         df_writer = df.write.format('jdbc')
 
@@ -135,13 +221,9 @@ if __name__ == '__main__':
     df.show()
 
     postgres_connector = PostgreSQLConnector(spark=spark)
-    postgres_db_table_read_props = {
-        'schema': 'dev',
-        'dbtable': 'dev.test_table'
-    }
-    df_postgres_table = postgres_connector.read_db_table_as_df(read_props=postgres_db_table_read_props)
+    df_postgres_table = postgres_connector.read_db_table_as_df(db_conf_conn_id='DEFAULT', schema='dev', db_table='dev.test_table')
     df_postgres_table.show()
 
     df_write_to_postgres = spark.createDataFrame(data=[{'person': 'John', 'age': 20}, {'person': 'James', 'age': 30}])
-    postgres_connector.write_df_to_db_table(df=df_write_to_postgres, write_props={'schema': 'dev', 'dbtable': 'dev.person_table'}, write_mode='overwrite')
+    postgres_connector.write_df_to_db_table(df=df_write_to_postgres, db_conf_conn_id='DEFAULT', schema='dev', db_table='dev.test_table', write_mode='overwrite')
     df_write_to_postgres.show()

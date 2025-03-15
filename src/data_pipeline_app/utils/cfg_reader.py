@@ -5,8 +5,9 @@ import configparser
 from configparser import Interpolation
 from jinja2 import Template, TemplateError
 from abc import ABC, abstractmethod
+import time
 
-class CfgReader(ABC):
+class AbstractCfgReader(ABC):
     @abstractmethod
     def read_file(self, file_path: Path):
         raise NotImplementedError
@@ -15,7 +16,7 @@ class CfgReader(ABC):
     def read_cfg(self, file_path: Path):
         raise NotImplementedError
     
-class BaseCfgReader(CfgReader):
+class BaseCfgReader(AbstractCfgReader):
     def __init__(self):
         pass
 
@@ -70,8 +71,16 @@ class IniCfgReader(BaseCfgReader):
         file_path_str = str(file_path)
         file_path_base_name = str(file_path_str).split('/')[-1]
         rendered_cfg_path = file_path_str.replace(file_path_base_name, 'rendered/' + file_path_base_name)
-        with open(rendered_cfg_path, 'w') as f:
-            f.write(rendered_cfg)
+
+        # Temporary solution to resolve concurrent writes for rendered INI config files
+        while True:
+            try:
+                with open(rendered_cfg_path, 'w') as f:
+                    f.write(rendered_cfg)
+                break
+            except IOError:
+                time.sleep(1)
+                continue
 
         cfg = self.read_cfg(file_path=rendered_cfg_path, interpolation=interpolation)
         return cfg
