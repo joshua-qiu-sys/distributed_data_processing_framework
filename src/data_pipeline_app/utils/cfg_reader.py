@@ -60,20 +60,6 @@ class IniCfgReader(BaseCfgReader):
         cfg_parser = ConfigParser(interpolation=interpolation)
         cfg_parser.read_file(open(file_path))
         cfg = self.parse_cfg(cfg_parser=cfg_parser)
-
-        # cfg = {}
-        # default_cfg = {}
-        # for k, v in cfg_parser.defaults().items():
-        #     default_cfg[k] = v
-        # if default_cfg:
-        #     cfg["DEFAULT"] = default_cfg
-
-        # for section in cfg_parser.sections():
-        #     section_cfg = {}
-        #     for k, v in cfg_parser.items(section):
-        #         section_cfg[k] = v
-        #     cfg[section] = section_cfg
-
         return cfg
     
     def read_jinja_templated_cfg(self,
@@ -87,22 +73,6 @@ class IniCfgReader(BaseCfgReader):
         cfg_parser = ConfigParser(interpolation=interpolation)
         cfg_parser.read_string(rendered_cfg)
         cfg = self.parse_cfg(cfg_parser=cfg_parser)
-
-        # file_path_str = str(file_path)
-        # file_path_base_name = str(file_path_str).split('/')[-1]
-        # rendered_cfg_path = file_path_str.replace(file_path_base_name, 'rendered/' + file_path_base_name)
-
-        # Temporary solution to resolve concurrent writes for rendered INI config files
-        # while True:
-        #     try:
-        #         with open(rendered_cfg_path, 'w') as f:
-        #             f.write(rendered_cfg)
-        #         break
-        #     except IOError:
-        #         time.sleep(1)
-        #         continue
-
-        # cfg = self.read_cfg(file_path=rendered_cfg_path, interpolation=interpolation)
         return cfg
     
 class YamlCfgReader(BaseCfgReader):
