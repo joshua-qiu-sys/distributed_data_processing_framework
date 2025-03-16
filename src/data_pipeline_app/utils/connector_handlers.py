@@ -112,9 +112,8 @@ class ConnectorCfgHandler(AbstractConnectorHandler):
         return processed_connector_cfg
     
 class ConnectorSelectionHandler(AbstractConnectorHandler):
-    def __init__(self, spark: SparkSession, direction: str, raw_connector_cfg: Dict):
+    def __init__(self, direction: str, raw_connector_cfg: Dict):
         super().__init__(direction=direction, raw_connector_cfg=raw_connector_cfg)
-        self.spark = spark
         self.connector_cfg_handler = None
 
     def get_processed_connector_cfg(self) -> Dict:
@@ -127,9 +126,9 @@ class ConnectorSelectionHandler(AbstractConnectorHandler):
         
         match self.connector_type:
             case 'local_file':
-                connector = LocalFileConnector(spark=self.spark)
+                connector = LocalFileConnector()
             case 'postgres':
-                connector = PostgreSQLConnector(spark=self.spark)
+                connector = PostgreSQLConnector()
         return connector
 
 if __name__ == '__main__':
@@ -142,14 +141,14 @@ if __name__ == '__main__':
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
     spark = spark_session_builder.get_or_create_spark_session()
 
-    src_conn_select_handler = ConnectorSelectionHandler(spark=spark, direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])
+    src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])
     processed_src_conn_cfg = src_conn_select_handler.get_processed_connector_cfg()
     src_connector = src_conn_select_handler.get_req_connector()
     print(f'Processed source connector config: {processed_src_conn_cfg}')
-    df = src_connector.read_from_source(**processed_src_conn_cfg)
+    df = src_connector.read_from_source(spark=spark, **processed_src_conn_cfg)
     df.show()
     
-    target_conn_select_handler = ConnectorSelectionHandler(spark=spark, direction='sink', raw_connector_cfg=src_to_tgt_cfg['target'])
+    target_conn_select_handler = ConnectorSelectionHandler(direction='sink', raw_connector_cfg=src_to_tgt_cfg['target'])
     processed_target_conn_cfg = target_conn_select_handler.get_processed_connector_cfg()
     target_connector = target_conn_select_handler.get_req_connector()
     print(f'Processed target connector config: {processed_target_conn_cfg}')

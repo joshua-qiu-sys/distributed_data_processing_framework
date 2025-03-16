@@ -10,7 +10,7 @@ POSTGRES_CONF_PATH = Path(CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH)
 
 class AbstractConnector(ABC):
     @abstractmethod
-    def read_from_source(self, **kwargs) -> DataFrame:
+    def read_from_source(self, spark: SparkSession, **kwargs) -> DataFrame:
         raise NotImplementedError
     
     @abstractmethod
@@ -18,28 +18,26 @@ class AbstractConnector(ABC):
         raise NotImplementedError
 
 class LocalFileConnector(AbstractConnector):
-    def __init__(self, spark: Optional[SparkSession] = None):
-        self.spark = spark
+    def __init__(self):
+        pass
 
-    def read_from_source(self, **kwargs) -> DataFrame:
-        df = self.read_file_as_df(**kwargs)
+    def read_from_source(self, spark: SparkSession, **kwargs) -> DataFrame:
+        df = self.read_file_as_df(spark=spark, **kwargs)
         return df
     
     def write_to_sink(self, df: DataFrame, **kwargs) -> None:
         self.write_df_to_file(df=df, **kwargs)
 
     def read_file_as_df(self,
+                        spark: SparkSession,
                         file_path: Path,
                         file_type: str = 'parquet',
                         read_props: Optional[Dict[str, Union[str, int, float]]] = None) -> DataFrame:
 
         if file_type not in ['parquet', 'csv', 'json', 'orc']:
             raise ValueError(f'Cannot read file. Unknown file type: {file_type}')
-        
-        if self.spark is None:
-            raise Exception('LocalFileConnector must be instantiated with a SparkSession object to read file')
 
-        df_reader = self.spark.read
+        df_reader = spark.read
         if read_props is not None:
             for k, v in read_props.items():
                 df_reader = df_reader.option(k, v)
@@ -88,20 +86,13 @@ class LocalFileConnector(AbstractConnector):
             raise Exception(f'Failed to write DataFrame to file {file_path}: {str(e)}')
         
         return df
-    
-class ExternalConnectionInterface(ABC):
-    @abstractmethod
-    def connect(self):
-        raise NotImplementedError
 
-class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
+class PostgreSQLConnector(AbstractConnector):
     def __init__(self,
                  db_conf_path: Optional[Path] = POSTGRES_CONF_PATH,
                  db_conf_conn_id: Optional[str] = 'DEFAULT',
-                 db_conn_details: Optional[Dict[str, str]] = None,
-                 spark: Optional[SparkSession] = None):
+                 db_conn_details: Optional[Dict[str, str]] = None):
         
-        self.spark = spark
         if db_conn_details is None:
             self.db_conf_path = db_conf_path
             self.db_conf_conn_id = db_conf_conn_id
@@ -112,14 +103,6 @@ class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
             self.db_conf_conn_id = None
             self.db_conn_details = db_conn_details
 
-        try:
-            self.connect()
-        except ConnectionError:
-            raise ConnectionError('PostgreSQLConnector could not establish a connection with the provided database connection details')
-
-    def connect(self):
-        pass
-
     def set_db_conf_path(self, db_conf_path: Path) -> None:
         self.db_conf_path = db_conf_path
         self.db_conn_details = IniCfgReader().read_cfg(file_path=self.db_conf_path, interpolation=None)[self.db_conf_conn_id]
@@ -128,17 +111,19 @@ class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
         self.db_conf_conn_id = db_conf_conn_id
         self.db_conn_details = IniCfgReader().read_cfg(file_path=self.db_conf_path, interpolation=None)[self.db_conf_conn_id]
 
-    def read_from_source(self, **kwargs) -> DataFrame:
-        df = self.read_db_table_as_df(**kwargs)
+    def read_from_source(self, spark: SparkSession, **kwargs) -> DataFrame:
+        df = self.read_db_table_as_df(spark=spark, **kwargs)
         return df
     
     def write_to_sink(self, df: DataFrame, **kwargs):
         self.write_df_to_db_table(df=df, **kwargs)
 
-    def read_db_table_as_df(self, db_conf_conn_id: str, schema: str, db_table: str, read_props: Dict[str, Union[str, int, float]] = None) -> DataFrame:
-
-        if self.spark is None:
-            raise Exception('PostgreSQLConnector must be instantiated with a SparkSession object to read database table')
+    def read_db_table_as_df(self,
+                            spark: SparkSession,
+                            db_conf_conn_id: str,
+                            schema: str,
+                            db_table: str,
+                            read_props: Dict[str, Union[str, int, float]] = None) -> DataFrame:
         
         if db_conf_conn_id != self.db_conf_conn_id:
             self.set_db_conf_conn_id(db_conf_conn_id)
@@ -151,7 +136,7 @@ class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
         if read_props is not None:
             upd_read_props.update(read_props)
 
-        df_reader = self.spark.read.format('jdbc')
+        df_reader = spark.read.format('jdbc')
         
         for k, v in upd_read_props.items():
             df_reader = df_reader.option(k, v)
@@ -188,12 +173,12 @@ class PostgreSQLConnector(AbstractConnector, ExternalConnectionInterface):
 if __name__ == '__main__':
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
     spark = spark_session_builder.get_or_create_spark_session()
-    file_connector = LocalFileConnector(spark=spark)
-    df = file_connector.read_file_as_df(file_path='data/raw/dataset1', file_type='parquet')
+    file_connector = LocalFileConnector()
+    df = file_connector.read_file_as_df(spark=spark, file_path='data/raw/dataset1', file_type='parquet')
     df.show()
 
-    postgres_connector = PostgreSQLConnector(spark=spark)
-    df_postgres_table = postgres_connector.read_db_table_as_df(db_conf_conn_id='DEFAULT', schema='dev', db_table='dev.test_table')
+    postgres_connector = PostgreSQLConnector()
+    df_postgres_table = postgres_connector.read_db_table_as_df(spark=spark, db_conf_conn_id='DEFAULT', schema='dev', db_table='dev.test_table')
     df_postgres_table.show()
 
     df_write_to_postgres = spark.createDataFrame(data=[{'person': 'John', 'age': 20}, {'person': 'James', 'age': 30}])

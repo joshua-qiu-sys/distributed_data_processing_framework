@@ -29,8 +29,8 @@ def main():
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
     
     file_path = 'data/raw/dataset1'
-    file_connector = LocalFileConnector(spark=spark)
-    df = file_connector.read_file_as_df(file_path=file_path, file_type='parquet')
+    file_connector = LocalFileConnector()
+    df = file_connector.read_file_as_df(spark=spark, file_path=file_path, file_type='parquet')
     logger.info(f'Loaded file {file_path} into Dataframe')
     logger.info(f'{df.take(10)}')
 
