@@ -1,8 +1,8 @@
 import itertools
 from read_ingestion_cfg import IngestionCfgReader
-from data_pipeline_app.utils.connectors import LocalFileConnector
+from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
-from data_pipeline_app.utils.data_validation import DatasetValidation, DatasetValidationChecker, DatasetValidationResult
+from data_pipeline_app.utils.data_validation import DatasetValidation
 from data_pipeline_app.utils.application_logger import ApplicationLogger
 
 class DatasetIngestion:
@@ -27,11 +27,16 @@ def main():
     logger.info(f'Successfully read source to target configurations: {src_to_tgt_cfg}')
     src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[etl_id]
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
-    
-    file_path = 'data/raw/dataset1'
-    file_connector = LocalFileConnector()
-    df = file_connector.read_file_as_df(spark=spark, file_path=file_path, file_type='parquet')
-    logger.info(f'Loaded file {file_path} into Dataframe')
+
+    dataset = src_to_tgt_cfg['src']['dataset_name']
+
+    src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])
+    processed_src_conn_cfg = src_conn_select_handler.get_processed_connector_cfg()
+    src_connector = src_conn_select_handler.get_req_connector()
+    logger.info(f'Processed source connector config: {processed_src_conn_cfg}')
+    df = src_connector.read_from_source(spark=spark, **processed_src_conn_cfg)
+    df.show()
+    logger.info(f'Loaded file {dataset} into Dataframe')
     logger.info(f'{df.take(10)}')
 
     validations = [vald for vald in src_data_vald_cfg['req_validations'].keys()]
@@ -46,7 +51,7 @@ def main():
                                      primary_key_cols=primary_key_cols,
                                      non_nullable_cols=non_nullable_cols)
     dataset_vald.perform_req_validations()
-    logger.info(f'Performed required validations for {file_path}')
+    logger.info(f'Performed required validations for {dataset}')
     for vald_checker in dataset_vald.get_vald_checker_list():
         vald_type = vald_checker.get_vald_type()
         vald_passed = vald_checker.get_vald_result().get_vald_passed()
@@ -58,7 +63,12 @@ def main():
         if df_vald_result_record_level is not None:
             logger.info(f'Validation dataframe - record level: {df_vald_result_record_level.collect()}')
 
-    file_connector.write_df_to_file(df=df, file_path='data/processed/dataset1', file_type='csv', write_mode='overwrite')
+    target_conn_select_handler = ConnectorSelectionHandler(direction='sink', raw_connector_cfg=src_to_tgt_cfg['target'])
+    processed_target_conn_cfg = target_conn_select_handler.get_processed_connector_cfg()
+    target_connector = target_conn_select_handler.get_req_connector()
+    logger.info(f'Processed target connector config: {processed_target_conn_cfg}')
+    target_connector.write_to_sink(df=df, **processed_target_conn_cfg)
+    logger.info(f'Loaded DataFrame into target')
 
 if __name__ == '__main__':
     main()

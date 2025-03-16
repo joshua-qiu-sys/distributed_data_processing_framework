@@ -10,7 +10,7 @@ ingest~dataset1:
     connector_type: postgres
     conn_id: DEFAULT
     schema: dev
-    db_table: dev.test_table
+    db_table: dev.dataset1
     write_mode: overwrite
     write_props:
       numPartitions: 10
