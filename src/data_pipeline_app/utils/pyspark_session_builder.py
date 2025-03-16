@@ -25,25 +25,37 @@ class PysparkSessionBuilder:
         }
         return spark_jar_path_dict
     
-    def _get_rendered_app_props_from_conf(self, spark_jar_conf_section: str = 'DEFAULT', spark_app_conf_section: str = 'default') -> Dict[str, Union[str, int, float]]:
+    def _get_rendered_app_props_from_conf(self,
+                                          spark_app_conf_path: Path,
+                                          spark_jars_conf_path: Path,
+                                          spark_jar_conf_section: str = 'DEFAULT',
+                                          spark_app_conf_section: str = 'default',
+                                          spark_jar_path_dict: Dict[str, str] = None) -> Dict[str, Union[str, int, float]]:
 
         ini_cfg_reader = IniCfgReader()
-        spark_jar_path_dict = self._get_spark_jar_paths_from_conf()
-        rendered_spark_jar_path_dict = ini_cfg_reader.read_jinja_templated_cfg(file_path=JARS_CONF_PATH, interpolation=None, cfg_vars=spark_jar_path_dict)[spark_jar_conf_section]
+        if spark_jar_path_dict is None:
+            spark_jar_path_dict = self._get_spark_jar_paths_from_conf()
+        rendered_spark_jar_path_dict = ini_cfg_reader.read_jinja_templated_cfg(file_path=spark_jars_conf_path, interpolation=None, cfg_vars=spark_jar_path_dict)[spark_jar_conf_section]
 
         yml_cfg_reader = YamlCfgReader()
-        rendered_app_props = yml_cfg_reader.read_jinja_templated_cfg(file_path=SPARK_APP_CONF_PATH, cfg_vars=rendered_spark_jar_path_dict)[spark_app_conf_section]
+        rendered_app_props = yml_cfg_reader.read_jinja_templated_cfg(file_path=spark_app_conf_path, cfg_vars=rendered_spark_jar_path_dict)[spark_app_conf_section]
         
         return rendered_app_props
 
     def get_or_create_spark_session(self,
+                                    spark_app_conf_path: Path = SPARK_APP_CONF_PATH,
+                                    spark_jars_conf_path: Path = JARS_CONF_PATH,
                                     spark_app_conf_etl_id: Optional[str] = 'default',
+                                    spark_jar_path_dict: Dict[str, str] = None,
                                     spark_app_props: Optional[Dict[str, Union[str, int, float]]] = None) -> SparkSession:
         
         spark_builder = SparkSession.builder.appName(self.app_name)
         
         if spark_app_props is None:
-            spark_app_props = self._get_rendered_app_props_from_conf(spark_app_conf_section=spark_app_conf_etl_id)
+            spark_app_props = self._get_rendered_app_props_from_conf(spark_app_conf_path=spark_app_conf_path,
+                                                                     spark_jars_conf_path=spark_jars_conf_path,
+                                                                     spark_app_conf_section=spark_app_conf_etl_id,
+                                                                     spark_jar_path_dict=spark_jar_path_dict)
         
         self.spark_app_props = spark_app_props
         
@@ -59,7 +71,7 @@ class PysparkSessionBuilder:
 
 if __name__ == '__main__':
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
-    spark = spark_session_builder.get_or_create_spark_session(spark_app_conf_etl_id='default')
+    spark = spark_session_builder.get_or_create_spark_session(spark_app_conf_path=SPARK_APP_CONF_PATH, spark_jars_conf_path=JARS_CONF_PATH, spark_app_conf_etl_id='default')
     spark_app_name = spark_session_builder.get_app_name()
     spark_app_props = spark_session_builder.get_spark_app_props()
     print(f'Spark application name: {spark_app_name}')

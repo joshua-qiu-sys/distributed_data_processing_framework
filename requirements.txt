@@ -2,3 +2,4 @@ wheel
 pyspark
 pyyaml
 jinja2
+pytest
