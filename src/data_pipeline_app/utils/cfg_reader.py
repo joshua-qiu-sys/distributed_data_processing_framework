@@ -4,7 +4,6 @@ import yaml
 from configparser import ConfigParser, Interpolation
 from jinja2 import Template, TemplateError
 from abc import ABC, abstractmethod
-import time
 
 class AbstractCfgReader(ABC):
     @abstractmethod

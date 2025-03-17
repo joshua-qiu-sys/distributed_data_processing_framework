@@ -67,12 +67,6 @@ def spark_session_conf(request) -> Dict[str, Union[str, Path]]:
     with open(test_spark_jars_conf_path, 'w') as f:
         f.write(test_spark_jars_conf)
 
-    def cleanup():
-        os.remove(test_spark_app_conf_path)
-        os.remove(test_spark_jars_conf_path)
-
-    request.addfinalizer(cleanup)
-
     conf = {
         'spark_app_conf_etl_id': test_spark_app_conf_etl_id,
         'spark_app_conf': test_spark_app_conf,
@@ -82,6 +76,12 @@ def spark_session_conf(request) -> Dict[str, Union[str, Path]]:
         'spark_app_conf_path': test_spark_app_conf_path,
         'spark_jars_conf_path': test_spark_jars_conf_path
     }
+
+    def cleanup():
+        os.remove(test_spark_app_conf_path)
+        os.remove(test_spark_jars_conf_path)
+
+    request.addfinalizer(cleanup)
 
     return conf
 
