@@ -119,6 +119,4 @@ def test_get_or_create_spark_session(spark_session_builder: PysparkSessionBuilde
         actual_spark_app_conf[k] = v
     actual_spark_app_conf = {k: v for k, v in actual_spark_app_conf.items() if k in spark_app_conf_expected.keys()}
     expected_spark_app_conf = spark_app_conf_expected
-    print(f'expected: {expected_spark_app_conf}')
-    print(f'actual: {actual_spark_app_conf}')
     assert actual_spark_app_conf == expected_spark_app_conf
