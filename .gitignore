@@ -7,3 +7,4 @@ jars/
 !cfg/jars/
 logs/
 event_logs/
+tmp/
