@@ -3,3 +3,4 @@ pyspark
 pyyaml
 jinja2
 pytest
+apache-airflow

@@ -8,3 +8,4 @@ jars/
 logs/
 event_logs/
 tmp/
+**/airflow.db

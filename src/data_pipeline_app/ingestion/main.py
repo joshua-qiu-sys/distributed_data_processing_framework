@@ -1,5 +1,4 @@
-import itertools
-from read_ingestion_cfg import IngestionCfgReader
+from data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
 from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
 from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
 from data_pipeline_app.utils.data_validation import DatasetValidation
@@ -9,7 +8,7 @@ class DatasetIngestion:
     def __init__(self):
         pass
 
-def main():
+def ingest():
 
     app_logger = ApplicationLogger(log_app_name='pyspark_ingestion_app', log_conf_section='INGESTION')
     logger = app_logger.get_logger()
@@ -71,5 +70,5 @@ def main():
     logger.info(f'Loaded DataFrame into target')
 
 if __name__ == '__main__':
-    main()
+    ingest()
     
