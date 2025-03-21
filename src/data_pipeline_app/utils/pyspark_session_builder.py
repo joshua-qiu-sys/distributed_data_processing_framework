@@ -3,10 +3,10 @@ import os
 from pathlib import Path
 from typing import Dict, Optional, Union
 from data_pipeline_app.utils.cfg_reader import IniCfgReader, YamlCfgReader
-from cfg.resource_paths import APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SPARK_APP_CONF_SUBPATH, JARS_ROOT, POSTGRES_JAR_SUBPATH, JARS_CONF_PATH
+from cfg.resource_paths import PROJECT_DIR, APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SPARK_APP_CONF_SUBPATH, JARS_ROOT, POSTGRES_JAR_SUBPATH, JARS_CONF_PATH
 
 SPARK_APP_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SPARK_APP_CONF_SUBPATH)
-POSTGRES_JAR_PATH = Path(JARS_ROOT, POSTGRES_JAR_SUBPATH)
+POSTGRES_JAR_PATH = Path(PROJECT_DIR, JARS_ROOT, POSTGRES_JAR_SUBPATH)
 
 class PysparkSessionBuilder:
     def __init__(self, app_name: str):

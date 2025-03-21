@@ -1,3 +1,5 @@
+PROJECT_DIR = '/home/joshuaqiu/Projects/pyspark_etl_framework'
+
 LOG_CONF_PATH = 'cfg/logging/log.conf'
 
 APP_CONF_ROOT = 'cfg/data_pipeline_app'
