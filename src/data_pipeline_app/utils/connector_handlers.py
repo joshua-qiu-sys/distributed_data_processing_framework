@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from typing import Dict, Optional
 from abc import ABC
-from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
+from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.connectors import AbstractConnector, LocalFileConnector, PostgreSQLConnector
 from data_pipeline_app.utils.cfg_reader import YamlCfgReader
 
@@ -26,7 +26,7 @@ class AbstractConnectorHandler(ABC):
         
     def set_direction(self, direction: str) -> None:
         if direction not in ['source', 'sink']:
-            raise ValueError('Direction can only be one of "source" or "sink"')
+            raise ValueError('Direction can only be either "source" or "sink"')
         self.direction = direction
     
     def set_raw_connector_cfg(self, raw_connector_cfg: Dict) -> None:
@@ -132,13 +132,14 @@ class ConnectorSelectionHandler(AbstractConnectorHandler):
         return connector
 
 if __name__ == '__main__':
-
     etl_id = 'ingest~dataset1'
 
     yml_cfg_reader = YamlCfgReader()
     src_to_tgt_cfg = yml_cfg_reader.read_cfg(file_path='cfg/data_pipeline_app/01_ingestion/src_to_target.yml')[etl_id]
 
-    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg.get_app_props()
+    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
 
     src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])

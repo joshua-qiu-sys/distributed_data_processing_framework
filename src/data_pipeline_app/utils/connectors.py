@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession, DataFrame
 from typing import Any, Dict, Optional, Union
 from pathlib import Path
 from abc import ABC, abstractmethod
-from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
+from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.cfg_reader import IniCfgReader
 from cfg.resource_paths import CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH
 
@@ -171,7 +171,11 @@ class PostgreSQLConnector(AbstractConnector):
         df_writer.mode(write_mode).save()
     
 if __name__ == '__main__':
-    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
+    etl_id = 'ingest~dataset1'
+
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg.get_app_props()
+    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
     file_connector = LocalFileConnector()
     df = file_connector.read_file_as_df(spark=spark, file_path='data/raw/dataset1', file_type='parquet')

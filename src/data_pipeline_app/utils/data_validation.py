@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession, DataFrame, Row
 import pyspark.sql.functions as F
 import datetime as dt
 from typing import List, Dict, Optional, Union
-from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
+from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.connectors import LocalFileConnector
 
 class DatasetValidationResult:
@@ -184,10 +184,14 @@ class DatasetValidation:
         return self.vald_checker_list
 
 if __name__ == '__main__':
-    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App')
+    etl_id = 'ingest~dataset1'
+
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg.get_app_props()
+    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
-    file_connector = LocalFileConnector(spark=spark, file_path='data/raw/dataset1')
-    df = file_connector.read_file()
+    df = spark.read.parquet('data/raw/dataset1')
+
     validations = ['primary_key_validation', 'null_validation']
     primary_key_cols = ['product_id']
     non_nullable_cols = ['item', 'quantity']

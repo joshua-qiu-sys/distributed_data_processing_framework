@@ -1,6 +1,6 @@
 from data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
 from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
-from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
+from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.data_validation import DatasetValidation
 from data_pipeline_app.utils.application_logger import ApplicationLogger
 
@@ -14,11 +14,6 @@ def ingest():
     logger = app_logger.get_logger()
     logger.info(f'Created application logger for application {app_logger.get_log_app_name()}')
 
-    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark Ingestion App')
-    spark = spark_session_builder.get_or_create_spark_session()
-    logger.info(f'Created Spark session for {spark_session_builder.get_app_name()}')
-
-    # target state --> etl id should be fetched from the event json received and used for fetching other etl details
     etl_id = 'ingest~dataset1'
 
     ingest_cfg_reader = IngestionCfgReader()
@@ -26,6 +21,13 @@ def ingest():
     logger.info(f'Successfully read source to target configurations: {src_to_tgt_cfg}')
     src_data_vald_cfg = ingest_cfg_reader.read_src_data_vald_cfg()[etl_id]
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
+    
+    spark_app_name = 'Pyspark App'
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg.get_app_props()
+    spark_session_builder = PysparkSessionBuilder(app_name=spark_app_name, app_props=spark_app_props)
+    spark = spark_session_builder.get_or_create_spark_session()
+    logger.info(f'Created Spark session for {spark_app_name}')
 
     dataset = src_to_tgt_cfg['src']['dataset_name']
 

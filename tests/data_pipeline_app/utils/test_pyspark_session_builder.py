@@ -2,17 +2,12 @@ import pytest
 import os
 from pathlib import Path
 from collections import namedtuple
-from data_pipeline_app.utils.pyspark_session_builder import PysparkSessionBuilder
+from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 
 SparkSessionConfFixture = namedtuple('SparkSessionConfFixture',
                                      ['spark_app_conf_etl_id', 'spark_app_conf', 'spark_jars_conf',
                                       'spark_jars_conf_section', 'spark_jar_path_dict', 'spark_app_conf_path',
                                       'spark_jars_conf_path', 'expected'])
-
-@pytest.fixture(scope='module')
-def spark_session_builder() -> PysparkSessionBuilder:
-    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark Test App')
-    return spark_session_builder
 
 @pytest.fixture(scope='module')
 def spark_session_conf(request) -> SparkSessionConfFixture:
@@ -96,8 +91,7 @@ def spark_session_conf(request) -> SparkSessionConfFixture:
 
     return spark_session_conf_fixture
 
-def test_get_or_create_spark_session(spark_session_builder: PysparkSessionBuilder,
-                                     spark_session_conf: SparkSessionConfFixture):
+def test_get_or_create_spark_session(spark_session_conf: SparkSessionConfFixture):
 
     spark_app_conf_etl_id = spark_session_conf.spark_app_conf_etl_id
     spark_app_conf = spark_session_conf.spark_app_conf
@@ -108,10 +102,14 @@ def test_get_or_create_spark_session(spark_session_builder: PysparkSessionBuilde
     spark_jars_conf_path = spark_session_conf.spark_jars_conf_path
     spark_app_conf_expected = spark_session_conf.expected
 
-    spark = spark_session_builder.get_or_create_spark_session(spark_app_conf_path=spark_app_conf_path,
-                                                              spark_jars_conf_path=spark_jars_conf_path,
-                                                              spark_app_conf_etl_id=spark_app_conf_etl_id,
-                                                              spark_jar_path_dict=spark_jar_path_dict)
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_path=spark_app_conf_path,
+                                  spark_jars_conf_path=spark_jars_conf_path,
+                                  spark_app_conf_section=spark_app_conf_etl_id,
+                                  spark_jar_conf_section=spark_jars_conf_section,
+                                  spark_jar_path_dict=spark_jar_path_dict)
+    spark_app_props = spark_app_cfg.get_app_props()
+    spark_session_builder = PysparkSessionBuilder(app_name='Pyspark Test App', app_props=spark_app_props)
+    spark = spark_session_builder.get_or_create_spark_session()
 
     actual_spark_app_conf_options = spark.sparkContext.getConf().getAll()
     actual_spark_app_conf = {}
