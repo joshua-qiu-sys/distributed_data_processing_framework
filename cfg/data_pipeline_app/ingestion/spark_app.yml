@@ -34,7 +34,7 @@ default:
   "spark.sql.parquet.filterPushdown": true
 
   "spark.eventLog.enabled": true
-  "spark.eventLog.dir": event_logs/01_ingestion
+  "spark.eventLog.dir": event_logs/ingestion
 
 ingest~dataset1:
 
@@ -72,7 +72,7 @@ ingest~dataset1:
   "spark.sql.parquet.filterPushdown": true
 
   "spark.eventLog.enabled": true
-  "spark.eventLog.dir": event_logs/01_ingestion
+  "spark.eventLog.dir": event_logs/ingestion
 
 ingest~dataset2:
 
@@ -108,4 +108,4 @@ ingest~dataset2:
   "spark.sql.parquet.filterPushdown": true
 
   "spark.eventLog.enabled": true
-  "spark.eventLog.dir": event_logs/01_ingestion
+  "spark.eventLog.dir": event_logs/ingestion
