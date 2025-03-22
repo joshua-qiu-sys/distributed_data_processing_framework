@@ -1,9 +1,9 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 from airflow.utils.dates import days_ago
 import os
-from pathlib import Path
-from data_pipeline_app.ingestion.main import ingest
+import data_pipeline_app.ingestion.main as ing
 
 dag_id = os.path.basename(__file__).replace('.py', '')
 default_args = {
@@ -11,13 +11,13 @@ default_args = {
     'start_date': days_ago(1)
 }
 
-def run_python_script():
-    ingest()
+with DAG(dag_id=dag_id, default_args=default_args) as dag:
+    
+    t_get_etl_jobs = PythonOperator(task_id='t_get_etl_jobs',
+                                    python_callable=ing.get_etl_jobs)
+    
+    t_get_req_spark_jars = PythonOperator.partial(task_id='t_get_req_spark_jars',
+                                                  python_callable=ing.get_req_spark_jars) \
+                               .expand(op_args=t_get_etl_jobs.output.map(lambda etl_id: [etl_id]))
 
-with DAG(dag_id=dag_id,
-         default_args=default_args):
-    
-    ingest_task = PythonOperator(task_id='ingest_task',
-                                 python_callable=run_python_script)
-    
-    ingest_task
+    t_get_etl_jobs >> t_get_req_spark_jars

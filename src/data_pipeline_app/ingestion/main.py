@@ -1,20 +1,87 @@
+from typing import List, Dict, Optional
+from abc import ABC
 from data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
 from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
 from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.data_validation import DatasetValidation
 from data_pipeline_app.utils.application_logger import ApplicationLogger
 
-class DatasetIngestion:
-    def __init__(self):
+class AbstractDatasetProcess(ABC):
+    def __init__(self, etl_id: str, phases: Optional[List[str]] = ['extraction', 'load']):
+        self.etl_id = etl_id
+        self.phases = phases
+
+    def extract(self):
         pass
 
-def ingest():
+    def load(self):
+        pass
+
+class DatasetIngestionProcess(AbstractDatasetProcess):
+    def __init__(self, etl_id: str, phases: Optional[List[str]] = ['extraction', 'validation', 'load']):
+        super().__init__(etl_id, phases)
+
+    def _get_ingest_cfg(self):
+        pass
+
+    def get_req_spark_jars(self):
+        self._get_ingest_cfg()
+        pass
+
+    def execute(self):
+        self._get_ingest_cfg()
+        pass
+
+    def extract(self):
+        pass
+
+    def validate(self):
+        pass
+
+    def load(self):
+        pass
+
+class AbstractDatasetProcessor(ABC):
+    def __init__(self, etl_id: str):
+        self.etl_id = etl_id
+
+class DatasetIngestionProcessor(AbstractDatasetProcessor):
+    def __init__(self, etl_id):
+        super().__init__(etl_id)
+
+    def execute_ingestion_process(self, dataset_ingestion_process: DatasetIngestionProcess) -> None:
+        dataset_ingestion_process.execute(etl_id=self.etl_id)
+
+class AbstractBatchProcessor(ABC):
+    def __init__(self, etl_jobs: List[str]):
+        self.etl_jobs = etl_jobs
+
+class IngestionBatchProcessor(AbstractBatchProcessor):
+    def __init__(self, etl_jobs: List[str], ingestion_phases_dict: Dict[str, List[str]]):
+        super().__init__(etl_jobs)
+        self.dataset_ingestion_processor_list = [DatasetIngestionProcessor(etl_id=etl_id,
+                                                                           ingestion_phases=ingestion_phases_dict[etl_id])
+                                                 for etl_id in self.etl_jobs]
+
+def get_etl_jobs() -> List[str]:
+    ingest_cfg_reader = IngestionCfgReader()
+    ingest_etl_jobs = ingest_cfg_reader.read_etl_jobs_cfg()
+    return ingest_etl_jobs
+
+def get_req_spark_jars(etl_id: str) -> Optional[str]:
+    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg.get_app_props()
+    if 'spark.jars' in spark_app_props.keys():
+        req_spark_jars = spark_app_props['spark.jars']
+    else:
+        req_spark_jars = None
+    return req_spark_jars
+
+def ingest(etl_id: str = 'ingest~dataset1'):
 
     app_logger = ApplicationLogger(log_app_name='pyspark_ingestion_app', log_conf_section='INGESTION')
     logger = app_logger.get_logger()
     logger.info(f'Created application logger for application {app_logger.get_log_app_name()}')
-
-    etl_id = 'ingest~dataset1'
 
     ingest_cfg_reader = IngestionCfgReader()
     src_to_tgt_cfg = ingest_cfg_reader.read_src_to_tgt_cfg()[etl_id]
@@ -72,5 +139,5 @@ def ingest():
     logger.info(f'Loaded DataFrame into target')
 
 if __name__ == '__main__':
-    ingest()
+    ingest(etl_id='ingest~dataset1')
     

@@ -4,3 +4,4 @@ pyyaml
 jinja2
 pytest
 apache-airflow
+apache-airflow-providers-apache-spark
