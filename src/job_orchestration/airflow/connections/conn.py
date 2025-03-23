@@ -15,4 +15,4 @@ try:
     session.commit()
     session.close()
 except sqlalchemy.exc.IntegrityError:
-    print('Connection already added')
+    print('Airflow connections already added')

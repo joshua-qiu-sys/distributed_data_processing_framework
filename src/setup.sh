@@ -19,5 +19,6 @@ echo "Moved contents of custom spark configuration directory $CUSTOM_SPARK_CONF_
 export AIRFLOW_HOME="${PROJECT_DIR}/src/job_orchestration/airflow"
 echo "AIRFLOW_HOME is set to: $AIRFLOW_HOME"
 
-# airflow users  create --role Admin --username admin --email admin --firstname admin --lastname admin --password admin
-# echo "Created Airflow admin role"
+AIRFLOW_CONNECTIONS_PY_FILE="$AIRFLOW_HOME/connections/conn.py"
+$PYSPARK_PYTHON "$AIRFLOW_CONNECTIONS_PY_FILE"
+echo "Added Airflow connections specified in $AIRFLOW_CONNECTIONS_PY_FILE"
