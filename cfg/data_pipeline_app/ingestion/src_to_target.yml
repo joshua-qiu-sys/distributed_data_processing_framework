@@ -21,7 +21,7 @@ ingest~dataset2:
     connector_type: local_file
     dataset_name: dataset2
     file_type: parquet
-    path: data/raw/dataset2
+    file_path: data/raw/dataset2
     read_props:
       mergeSchema: false
   target:

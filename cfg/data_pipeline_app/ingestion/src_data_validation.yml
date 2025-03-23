@@ -9,3 +9,5 @@ ingest~dataset2:
   req_validations:
     primary_key_validation:
       cols_to_check: [product_id]
+    null_validation:
+      cols_to_check: [item, quantity]

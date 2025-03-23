@@ -11,6 +11,9 @@ INGEST_SPARK_APP_CONF_SUBPATH = 'spark_app.yml'
 TRANSFORM_CONF_SUBPATH = 'transformation'
 DISTRIBUTE_CONF_SUBPATH = 'distribution'
 
+APP_ROOT = 'src/data_pipeline_app'
+INGEST_SPARK_APP_SUBPATH = 'ingestion/main.py'
+
 CONNECTORS_CONF_ROOT = 'cfg/connectors'
 POSTGRES_CONNECTOR_CONF_SUBPATH = 'postgresql/db_conn.properties'
 

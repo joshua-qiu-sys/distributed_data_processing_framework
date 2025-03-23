@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 from abc import ABC
+import sys
 from data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
 from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
 from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
@@ -77,7 +78,7 @@ def get_req_spark_jars(etl_id: str) -> Optional[str]:
         req_spark_jars = None
     return req_spark_jars
 
-def ingest(etl_id: str = 'ingest~dataset1'):
+def ingest(etl_id: str = 'ingest~dataset1', **kwargs):
 
     app_logger = ApplicationLogger(log_app_name='pyspark_ingestion_app', log_conf_section='INGESTION')
     logger = app_logger.get_logger()
@@ -139,5 +140,6 @@ def ingest(etl_id: str = 'ingest~dataset1'):
     logger.info(f'Loaded DataFrame into target')
 
 if __name__ == '__main__':
-    ingest(etl_id='ingest~dataset1')
+    etl_id = sys.argv[1]
+    ingest(etl_id=etl_id)
     
