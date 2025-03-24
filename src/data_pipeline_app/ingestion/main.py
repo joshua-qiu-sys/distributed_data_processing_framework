@@ -1,3 +1,4 @@
+from pyspark.sql import SparkSession, DataFrame
 from typing import List, Dict, Optional
 from abc import ABC
 import sys
@@ -5,64 +6,89 @@ from data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
 from data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
 from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from data_pipeline_app.utils.data_validation import DatasetValidation
+from data_pipeline_app.utils.data_pipeline import AbstractDataPipeline
 from data_pipeline_app.utils.application_logger import ApplicationLogger
-
-class AbstractDatasetProcess(ABC):
-    def __init__(self, etl_id: str, phases: Optional[List[str]] = ['extraction', 'load']):
+        
+class DataIngestionPipeline(AbstractDataPipeline):
+    def __init__(self, spark: SparkSession, etl_id: str, src_to_tgt_cfg: Dict, src_data_vald_cfg: Dict = None, phases: Optional[List[str]] = ['extraction', 'validation', 'load']):
+        self.spark = spark
         self.etl_id = etl_id
-        self.phases = phases
+        self.src_to_tgt_cfg = src_to_tgt_cfg
+        self.data_vald_cfg = src_data_vald_cfg
+        self.dataset = self.src_to_tgt_cfg['src']['dataset_name']
+        if 'extraction' not in phases or 'load' not in phases:
+            raise ValueError('Data pipeline phases must contain "extraction" and "load"')
+        else:    
+            self.phases = phases
+        self.df = None
 
-    def extract(self):
-        pass
+    def execute_pipeline(self) -> None:
+        self.extract()
+        if 'validation' in self.phases:
+            self.validate()
+        self.load()
 
-    def load(self):
-        pass
+    def extract(self) -> DataFrame:
+        src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=self.src_to_tgt_cfg['src'])
+        processed_src_conn_cfg = src_conn_select_handler.get_processed_connector_cfg()
+        src_connector = src_conn_select_handler.get_req_connector()
+        df = src_connector.read_from_source(spark=self.spark, **processed_src_conn_cfg)
+        return df
+    
+    def validate(self) -> DatasetValidation:
+        validations = [vald for vald in self.src_data_vald_cfg['req_validations'].keys()]
+        primary_key_cols = self.src_data_vald_cfg['req_validations']['primary_key_validation']['cols_to_check']
+        non_nullable_cols = self.src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
+        
+        dataset_vald = DatasetValidation(spark=self.spark,
+                                         df=self.df,
+                                         vald_types=validations,
+                                         primary_key_cols=primary_key_cols,
+                                         non_nullable_cols=non_nullable_cols)
+        dataset_vald.perform_req_validations()
+        return dataset_vald
 
-class DatasetIngestionProcess(AbstractDatasetProcess):
-    def __init__(self, etl_id: str, phases: Optional[List[str]] = ['extraction', 'validation', 'load']):
-        super().__init__(etl_id, phases)
+    def load(self) -> None:
+        if self.df is None:
+            raise Exception('Cannot load data to a sink for a DataFrame object that does not exist')
+        else:
+            target_conn_select_handler = ConnectorSelectionHandler(direction='sink', raw_connector_cfg=self.src_to_tgt_cfg['target'])
+            processed_target_conn_cfg = target_conn_select_handler.get_processed_connector_cfg()
+            target_connector = target_conn_select_handler.get_req_connector()
+            target_connector.write_to_sink(df=self.df, **processed_target_conn_cfg)
 
-    def _get_ingest_cfg(self):
-        pass
+class DataIngestionBatchMetadata:
+    def __init__(self, etl_jobs: List[str] = None):
+        if etl_jobs is None:
+            self.get_etl_jobs_from_conf()
+        else:
+            self.etl_jobs = etl_jobs
 
-    def get_req_spark_jars(self):
-        self._get_ingest_cfg()
-        pass
-
-    def execute(self):
-        self._get_ingest_cfg()
-        pass
-
-    def extract(self):
-        pass
-
-    def validate(self):
-        pass
-
-    def load(self):
-        pass
-
-class AbstractDatasetProcessor(ABC):
-    def __init__(self, etl_id: str):
-        self.etl_id = etl_id
-
-class DatasetIngestionProcessor(AbstractDatasetProcessor):
-    def __init__(self, etl_id):
-        super().__init__(etl_id)
-
-    def execute_ingestion_process(self, dataset_ingestion_process: DatasetIngestionProcess) -> None:
-        dataset_ingestion_process.execute(etl_id=self.etl_id)
-
-class AbstractBatchProcessor(ABC):
-    def __init__(self, etl_jobs: List[str]):
+    def set_etl_jobs(self, etl_jobs: List[str]) -> None:
         self.etl_jobs = etl_jobs
 
-class IngestionBatchProcessor(AbstractBatchProcessor):
-    def __init__(self, etl_jobs: List[str], ingestion_phases_dict: Dict[str, List[str]]):
-        super().__init__(etl_jobs)
-        self.dataset_ingestion_processor_list = [DatasetIngestionProcessor(etl_id=etl_id,
-                                                                           ingestion_phases=ingestion_phases_dict[etl_id])
-                                                 for etl_id in self.etl_jobs]
+    def get_etl_jobs(self) -> List[str]:
+        return self.etl_jobs
+
+    def get_etl_jobs_from_conf(self) -> List[str]:
+        ingest_cfg_reader = IngestionCfgReader()
+        ingest_etl_jobs = ingest_cfg_reader.read_etl_jobs_cfg()
+        self.set_etl_jobs(etl_jobs=ingest_etl_jobs)
+        return ingest_etl_jobs
+
+    def get_req_spark_jars(self, etl_jobs_list: List[str] = None) -> List[Optional[str]]:
+        req_spark_jar_list = []
+        if etl_jobs_list is None:
+            etl_jobs_list = self.etl_jobs
+        for etl_job in etl_jobs_list:
+            spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_job)
+            spark_app_props = spark_app_cfg.get_app_props()
+            if 'spark.jars' in spark_app_props.keys():
+                req_spark_jar = spark_app_props['spark.jars']
+            else:
+                req_spark_jar = None
+            req_spark_jar_list.append(req_spark_jar)
+        return req_spark_jar_list
 
 def get_etl_jobs() -> List[str]:
     ingest_cfg_reader = IngestionCfgReader()
@@ -112,7 +138,7 @@ def ingest(etl_id: str = 'ingest~dataset1', **kwargs):
     logger.info(f'Validations to perform: {validations}')
     primary_key_cols = src_data_vald_cfg['req_validations']['primary_key_validation']['cols_to_check']
     logger.info(f'Primary key cols: {primary_key_cols}')
-    non_nullable_cols = primary_key_cols = src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
+    non_nullable_cols = src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
     logger.info(f'Non-nullable cols: {non_nullable_cols}')
     dataset_vald = DatasetValidation(spark=spark,
                                      df=df,
