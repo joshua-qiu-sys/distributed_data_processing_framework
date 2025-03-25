@@ -9,3 +9,4 @@ logs/
 event_logs/
 tmp/
 **/airflow.db
+**/airflow-webserver.pid
