@@ -22,3 +22,6 @@ echo "AIRFLOW_HOME is set to: $AIRFLOW_HOME"
 AIRFLOW_CONNECTIONS_PY_FILE="$AIRFLOW_HOME/connections/conn.py"
 $PYSPARK_PYTHON "$AIRFLOW_CONNECTIONS_PY_FILE"
 echo "Added Airflow connections specified in $AIRFLOW_CONNECTIONS_PY_FILE"
+
+sudo service ssh start
+echo "Started sshd service"
