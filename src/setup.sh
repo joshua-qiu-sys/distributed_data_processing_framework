@@ -23,5 +23,8 @@ AIRFLOW_CONNECTIONS_PY_FILE="$AIRFLOW_HOME/connections/conn.py"
 $PYSPARK_PYTHON "$AIRFLOW_CONNECTIONS_PY_FILE"
 echo "Added Airflow connections specified in $AIRFLOW_CONNECTIONS_PY_FILE"
 
+export CONFLUENT_KAFKA_HOME="/opt/kafka/confluent-7.9.0"
+echo "CONFLUENT_KAFKA_HOME is set to: $CONFLUENT_KAFKA_HOME"
+
 sudo service ssh start
 echo "Started sshd service"
