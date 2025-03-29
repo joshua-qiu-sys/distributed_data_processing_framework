@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 import os
 from collections import namedtuple
-from data_pipeline_app.utils.cfg_reader import BaseCfgReader, IniCfgReader, YamlCfgReader
+from batch_data_pipeline_app.utils.cfg_reader import BaseCfgReader, IniCfgReader, YamlCfgReader
 
 CfgFileFixture = namedtuple('CfgFileFixture', ['cfg_path', 'cfg_content', 'expected'])
 JinjaCfgFileFixture = namedtuple('CfgFileFixture', ['cfg_path', 'cfg_content', 'cfg_vars', 'expected'])

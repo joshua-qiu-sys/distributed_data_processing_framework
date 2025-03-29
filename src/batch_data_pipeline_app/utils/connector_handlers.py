@@ -1,9 +1,9 @@
 from pyspark.sql import SparkSession
 from typing import Dict, Optional
 from abc import ABC
-from data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from data_pipeline_app.utils.connectors import AbstractConnector, LocalFileConnector, PostgreSQLConnector
-from data_pipeline_app.utils.cfg_reader import YamlCfgReader
+from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.utils.connectors import AbstractConnector, LocalFileConnector, PostgreSQLConnector
+from batch_data_pipeline_app.utils.cfg_reader import YamlCfgReader
 
 ACCEPTED_CONNECTOR_TYPES = ['local_file', 'postgres']
 
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     etl_id = 'ingest~dataset1'
 
     yml_cfg_reader = YamlCfgReader()
-    src_to_tgt_cfg = yml_cfg_reader.read_cfg(file_path='cfg/data_pipeline_app/01_ingestion/src_to_target.yml')[etl_id]
+    src_to_tgt_cfg = yml_cfg_reader.read_cfg(file_path='cfg/batch_data_pipeline_app/01_ingestion/src_to_target.yml')[etl_id]
 
     spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
     spark_app_props = spark_app_cfg.get_app_props()

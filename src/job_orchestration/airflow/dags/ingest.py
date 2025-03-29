@@ -5,7 +5,7 @@ from airflow.utils.dates import days_ago
 import os
 import datetime as dt
 from pathlib import Path
-from data_pipeline_app.ingestion.main import DataIngestionBatchMetadata
+from batch_data_pipeline_app.ingestion.main import DataIngestionBatchMetadata
 from cfg.resource_paths import PROJECT_DIR, APP_ROOT, INGEST_SPARK_APP_SUBPATH
 
 INGEST_SPARK_APP_PATH = Path(PROJECT_DIR, APP_ROOT, INGEST_SPARK_APP_SUBPATH)

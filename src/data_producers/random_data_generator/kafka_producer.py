@@ -21,8 +21,9 @@ def produce_message():
             print(f'SUCCESS: Message delivery succeeded: {{"topic": {topic}, "key": {key}, "value": {value}}}')
 
     topic = 'uncatg_landing_zone'
-    category = 'consumer_goods'
-    products = ['computer', 'television', 'smartphone', 'book', 'clothing', 'alarm clock', 'batteries']
+    products = ['computer', 'television', 'smartphone', 'book', 'clothing', 'alarm clock', 'batteries', 'headphones',
+                'toothpaste', 'shampoo', 'laundry detergent', 'paper towels', 'charger', 'sunscreen', 'instant noodles',
+                'packaged snacks', 'light bulb', 'bottled water', 'air freshener', 'cooking oil', 'canned soup']
 
     poll_interval = 3
     flush_interval = 15
@@ -33,7 +34,7 @@ def produce_message():
     count = 0
     while True:
         try:
-            key = category
+            key = str(products.index(choice(products)))
             value = choice(products)
             producer.produce(topic, value, key, callback=delivery_callback)
             print(f'Sent data to buffer: {{"topic": {topic}, "key": {key}, "value": {value}}}')
@@ -52,6 +53,8 @@ def produce_message():
             print('Producer is flushing records to brokers. Blocking current thread until completion...')
             producer.flush()
             last_flush_time = curr_time
+
+        time.sleep(1)
 
 if __name__ == '__main__':
     produce_message()

@@ -15,5 +15,5 @@ echo "ETL ID used for spark submit: $ETL_ID"
     --master spark://localhost:7077 \
     --deploy-mode client \
     --jars "$SPARK_JARS" \
-    /home/joshuaqiu/Projects/pyspark_etl_framework/src/data_pipeline_app/ingestion/main.py \
+    /home/joshuaqiu/Projects/pyspark_etl_framework/src/batch_data_pipeline_app/ingestion/main.py \
     $ETL_ID
