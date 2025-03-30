@@ -1,15 +1,18 @@
 from confluent_kafka import Producer
 from random import choice
 import time
+import logging
+from read_kafka_producer_cfg import KafkaProducerCfgReader
+
+logger = logging.getLogger(f'random_data_generator')
 
 def produce_message():
 
-    config = {
-        'bootstrap.servers': 'localhost:9093,localhost:8093,localhost:7093',
-        'acks': 'all'
-    }
+    producer_cfg_reader = KafkaProducerCfgReader()
+    producer_props_cfg = producer_cfg_reader.read_producer_props_cfg()
+    print(f'Producer properties: {producer_props_cfg}')
 
-    producer = Producer(config)
+    producer = Producer(producer_props_cfg)
 
     def delivery_callback(err, msg):
         if err:

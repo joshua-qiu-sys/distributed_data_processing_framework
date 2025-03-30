@@ -14,6 +14,13 @@ DISTRIBUTE_CONF_SUBPATH = 'distribution'
 APP_ROOT = 'src/batch_data_pipeline_app'
 INGEST_SPARK_APP_SUBPATH = 'ingestion/main.py'
 
+DATA_PRODUCERS_CONF_ROOT = 'cfg/data_producers'
+RAND_DATA_GEN_CONF_SUBPATH = 'random_data_generator'
+RAND_DATA_GEN_KAFKA_PRODUCER_CONF_SUBPATH = 'kafka_producer.yml'
+
+INFRA_CONF_ROOT = 'cfg/infra'
+KAFKA_CLUSTER_CONF_SUBPATH = 'kafka_cluster/cluster.properties'
+
 CONNECTORS_CONF_ROOT = 'cfg/connectors'
 POSTGRES_CONNECTOR_CONF_SUBPATH = 'postgresql/db_conn.properties'
 

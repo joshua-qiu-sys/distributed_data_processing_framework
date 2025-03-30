@@ -1,0 +1,11 @@
+"client.id": random_data_generator
+"bootstrap.servers": {{ bootstrap_servers }}
+"acks": all
+"batch.size": 16384 # 16KB
+"delivery.timeout.ms": 60000 # 60s
+"linger.ms": 500 # 0.5s
+"request.timeout.ms": 30000 # 30s
+"max.in.flight.requests.per.connection": 5
+"enable.idempotence": true
+"transactional.id": transactional_random_data_generator
+"transaction.timeout.ms": 60000 # 1min
