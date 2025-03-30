@@ -3,11 +3,11 @@ from typing import List, Dict, Optional
 import sys
 import logging
 from batch_data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
-from batch_data_pipeline_app.utils.connector_handlers import ConnectorSelectionHandler
-from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from batch_data_pipeline_app.utils.data_validation import DatasetValidation
-from batch_data_pipeline_app.utils.data_pipeline import AbstractDataPipeline
-from batch_data_pipeline_app.utils.application_logger import ApplicationLogger
+from batch_data_pipeline_app.batch_utils.connector_handlers import ConnectorSelectionHandler
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.batch_utils.data_validation import DatasetValidation
+from batch_data_pipeline_app.batch_utils.data_pipeline import AbstractDataPipeline
+from src.utils.application_logger import ApplicationLogger
 
 logger = logging.getLogger('pyspark_ingestion_app')
         

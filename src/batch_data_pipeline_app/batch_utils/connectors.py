@@ -2,8 +2,8 @@ from pyspark.sql import SparkSession, DataFrame
 from typing import Any, Dict, Optional, Union
 from pathlib import Path
 from abc import ABC, abstractmethod
-from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from batch_data_pipeline_app.utils.cfg_reader import IniCfgReader
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from src.utils.cfg_reader import IniCfgReader
 from cfg.resource_paths import CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH
 
 POSTGRES_CONF_PATH = Path(CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH)

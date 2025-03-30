@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List
 import logging
-from batch_data_pipeline_app.utils.cfg_reader import YamlCfgReader
+from src.utils.cfg_reader import YamlCfgReader
 from cfg.resource_paths import APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_ETL_JOBS_CONF_SUBPATH, INGEST_SRC_TO_TGT_CONF_SUBPATH, INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH
 
 INGEST_ETL_JOBS_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_ETL_JOBS_CONF_SUBPATH)

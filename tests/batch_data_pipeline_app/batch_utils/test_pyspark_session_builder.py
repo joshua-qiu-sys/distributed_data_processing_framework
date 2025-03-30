@@ -2,7 +2,7 @@ import pytest
 import os
 from pathlib import Path
 from collections import namedtuple
-from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 
 SparkSessionConfFixture = namedtuple('SparkSessionConfFixture',
                                      ['spark_app_conf_etl_id', 'spark_app_conf', 'spark_jars_conf',

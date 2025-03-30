@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
 from pathlib import Path
 from typing import Dict, Union
-from batch_data_pipeline_app.utils.cfg_reader import IniCfgReader, YamlCfgReader
+from src.utils.cfg_reader import IniCfgReader, YamlCfgReader
 from cfg.resource_paths import PROJECT_DIR, APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SPARK_APP_CONF_SUBPATH, JARS_ROOT, POSTGRES_JAR_SUBPATH, JARS_CONF_PATH
 
 SPARK_APP_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SPARK_APP_CONF_SUBPATH)

@@ -105,10 +105,10 @@ if __name__ == '__main__':
     ini_cfg = ini_cfg_reader.read_cfg(file_path='cfg/logging/log.conf', interpolation=None)
     print(f'Ini cfg:\n{ini_cfg}')
     yml_cfg_reader = YamlCfgReader()
-    yml_cfg = yml_cfg_reader.read_cfg(file_path='cfg/batch_data_pipeline_app/01_ingestion/src_to_target.yml')
+    yml_cfg = yml_cfg_reader.read_cfg(file_path='cfg/batch_data_pipeline_app/ingestion/src_to_target.yml')
     print(f'Yml cfg:\n{yml_cfg}')
 
     jinja_templated_ini_cfg = ini_cfg_reader.read_jinja_templated_cfg(file_path='cfg/jars/spark_jars.conf', interpolation=None, cfg_vars={'postgres_jar_path': '/root/postgres_jar'})
     print(f'Jinja templated ini cfg:\n{jinja_templated_ini_cfg}')
-    jinja_templated_yml_cfg = yml_cfg_reader.read_jinja_templated_cfg(file_path='cfg/batch_data_pipeline_app/01_ingestion/spark_app.yml', cfg_vars={'postgres': '/root/postgres_jar', 'postgre': '/root/postgres_jar'})
+    jinja_templated_yml_cfg = yml_cfg_reader.read_jinja_templated_cfg(file_path='cfg/batch_data_pipeline_app/ingestion/spark_app.yml', cfg_vars={'postgres': '/root/postgres_jar', 'postgre': '/root/postgres_jar'})
     print(f'Jinja templated yml cfg:\n{jinja_templated_yml_cfg}')

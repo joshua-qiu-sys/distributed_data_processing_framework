@@ -1,9 +1,9 @@
 from pyspark.sql import SparkSession
 from typing import Dict, Optional
 from abc import ABC
-from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from batch_data_pipeline_app.utils.connectors import AbstractConnector, LocalFileConnector, PostgreSQLConnector
-from batch_data_pipeline_app.utils.cfg_reader import YamlCfgReader
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.batch_utils.connectors import AbstractConnector, LocalFileConnector, PostgreSQLConnector
+from src.utils.cfg_reader import YamlCfgReader
 
 ACCEPTED_CONNECTOR_TYPES = ['local_file', 'postgres']
 

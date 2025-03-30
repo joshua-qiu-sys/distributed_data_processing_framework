@@ -2,8 +2,8 @@ from pyspark.sql import SparkSession, DataFrame, Row
 import pyspark.sql.functions as F
 import datetime as dt
 from typing import List, Dict, Optional, Union
-from batch_data_pipeline_app.utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from batch_data_pipeline_app.utils.connectors import LocalFileConnector
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.batch_utils.connectors import LocalFileConnector
 
 class DatasetValidationResult:
     def __init__(self,

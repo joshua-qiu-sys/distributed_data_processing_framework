@@ -7,7 +7,7 @@ from cfg.resource_paths import LOG_CONF_PATH
 
 class ApplicationLogger:
     def __init__(self,
-                 log_app_name: str = 'pyspark_app',
+                 log_app_name: str = 'data_pipeline_app',
                  log_conf_section: str = 'DEFAULT'):
         
         self.log_conf_section = log_conf_section
