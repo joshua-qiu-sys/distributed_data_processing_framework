@@ -2,20 +2,20 @@ from pathlib import Path
 from typing import Dict, List
 import logging
 from src.utils.cfg_reader import YamlCfgReader
-from cfg.resource_paths import APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_ETL_JOBS_CONF_SUBPATH, \
-                               INGEST_SRC_TO_TGT_CONF_SUBPATH, INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH
+from cfg.resource_paths import BATCH_APP_CONF_ROOT, BATCH_INGEST_CONF_SUBPATH, BATCH_INGEST_ETL_JOBS_CONF_SUBPATH, \
+                               BATCH_INGEST_SRC_TO_TGT_CONF_SUBPATH, BATCH_INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH
 
-INGEST_ETL_JOBS_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_ETL_JOBS_CONF_SUBPATH)
-SRC_TO_TGT_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SRC_TO_TGT_CONF_SUBPATH)
-SRC_DATA_VALIDATION_CONF_PATH = Path(APP_CONF_ROOT, INGEST_CONF_SUBPATH, INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH)
+BATCH_INGEST_ETL_JOBS_CONF_PATH = Path(BATCH_APP_CONF_ROOT, BATCH_INGEST_CONF_SUBPATH, BATCH_INGEST_ETL_JOBS_CONF_SUBPATH)
+SRC_TO_TGT_CONF_PATH = Path(BATCH_APP_CONF_ROOT, BATCH_INGEST_CONF_SUBPATH, BATCH_INGEST_SRC_TO_TGT_CONF_SUBPATH)
+SRC_DATA_VALIDATION_CONF_PATH = Path(BATCH_APP_CONF_ROOT, BATCH_INGEST_CONF_SUBPATH, BATCH_INGEST_SRC_DATA_VALIDATION_CONF_SUBPATH)
 
-logger = logging.getLogger(f'pyspark_ingestion_app.{__name__}')
+logger = logging.getLogger(f'batch_ingestion_app.{__name__}')
 
 class IngestionCfgReader(YamlCfgReader):
     def __init__(self):
         super().__init__()
 
-    def read_etl_jobs_cfg(self, etl_jobs_conf_path: Path = INGEST_ETL_JOBS_CONF_PATH) -> List[str]:
+    def read_etl_jobs_cfg(self, etl_jobs_conf_path: Path = BATCH_INGEST_ETL_JOBS_CONF_PATH) -> List[str]:
         cfg = super().read_cfg(file_path=etl_jobs_conf_path)
         return cfg
 

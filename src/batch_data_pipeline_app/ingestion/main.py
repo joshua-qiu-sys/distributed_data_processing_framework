@@ -9,7 +9,7 @@ from batch_data_pipeline_app.batch_utils.data_validation import DatasetValidatio
 from batch_data_pipeline_app.batch_utils.data_pipeline import AbstractDataPipeline
 from src.utils.application_logger import ApplicationLogger
 
-logger = logging.getLogger('pyspark_ingestion_app')
+logger = logging.getLogger('batch_ingestion_app')
         
 class DataIngestionPipeline(AbstractDataPipeline):
     def __init__(self, spark: SparkSession, etl_id: str, src_to_tgt_cfg: Dict, src_data_vald_cfg: Dict = None, phases: Optional[List[str]] = ['extraction', 'validation', 'load']):

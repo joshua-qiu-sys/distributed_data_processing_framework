@@ -1,0 +1,15 @@
+"client.id": streaming_ingestion_consumer
+"bootstrap.servers": {{ bootstrap_servers }}
+"group.id": kafka_stream_proc_group
+"group.instance.id": kafka_consumer_1
+"partition.assignment.strategy": cooperative-sticky
+"fetch.min.bytes": 51200 # 50KB
+"fetch.max.bytes": 52428800 # 50MB
+"max.partition.fetch.bytes": 1048576 # 1MB
+"enable.auto.commit": false
+"on_commit": {{ on_commit_callback }}
+"auto.offset.reset": latest
+"heartbeat.interval.ms": 3000 # 3s
+"session.timeout.ms": 15000 # 15s
+"max.poll.interval.ms": 180000 # 3min
+"isolation.level": read_committed

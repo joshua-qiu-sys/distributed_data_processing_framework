@@ -43,7 +43,7 @@ def produce_message():
             print(f'Sent data to buffer: {{"topic": {topic}, "key": {key}, "value": {value}}}')
             print(f'Count: {count}')
             count += 1
-        except BufferError as e:
+        except BufferError:
             print(f'Buffer is full. Pausing for 2 seconds before resuming.')
             time.sleep(2)
 

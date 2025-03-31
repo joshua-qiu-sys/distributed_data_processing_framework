@@ -1,5 +1,6 @@
 from confluent_kafka import Consumer
 import threading
+from read_kafka_consumer_cfg import KafkaConsumerCfgReader
 
 def consume_message():
 
@@ -9,16 +10,11 @@ def consume_message():
         else:
             print(f'SUCCESS: Commit succeeded for partitions: {partitions}')
 
-    config = {
-        'bootstrap.servers': 'localhost:9093,localhost:8093,localhost:7093',
-        'group.id':          'kafka_consume_proc_group',
-        'group.instance.id': 'kafka_consumer_1',
-        'enable.auto.commit': 'false',
-        'on_commit': commit_callback,
-        'auto.offset.reset': 'latest'
-    }
+    consumer_cfg_reader = KafkaConsumerCfgReader()
+    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg(consumer_on_commit_callback_func=commit_callback)
+    print(f'Consumer properties: {consumer_props_cfg}')
 
-    consumer = Consumer(config)
+    consumer = Consumer(consumer_props_cfg)
 
     is_rebalancing = threading.Event()
     is_rebalancing.set()
