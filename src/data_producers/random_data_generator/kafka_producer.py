@@ -44,12 +44,12 @@ def produce_message():
             print(f'Count: {count}')
             count += 1
         except BufferError:
-            print(f'Buffer is full. Pausing for 2 seconds before resuming.')
+            print(f'Buffer is full. Pausing for 2 seconds to allow messages to be sent from buffer before resuming.')
             time.sleep(2)
 
         curr_time = time.time()
         if curr_time >= last_poll_time + poll_interval:
-            print('Producer is polling. Sending existing records in buffer and handling responses from brokers...')
+            print('Producer is polling. Handling delivery callback responses from brokers...')
             producer.poll(poll_interval)
             last_poll_time = curr_time
         if curr_time >= last_flush_time + flush_interval:
