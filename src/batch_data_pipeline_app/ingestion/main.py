@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 import sys
 import logging
 from batch_data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
-from batch_data_pipeline_app.batch_utils.connector_handlers import ConnectorSelectionHandler
+from batch_data_pipeline_app.batch_utils.connector_handlers import ConnectorCfgHandler, ConnectorSelectionHandler
 from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
 from batch_data_pipeline_app.batch_utils.data_validation import DatasetValidation
 from batch_data_pipeline_app.batch_utils.data_pipeline import AbstractDataPipeline
@@ -44,11 +44,13 @@ class DataIngestionPipeline(AbstractDataPipeline):
         self.load()
 
     def extract(self) -> DataFrame:
-        src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=self.src_to_tgt_cfg['src'])
-        processed_src_conn_cfg = src_conn_select_handler.get_processed_connector_cfg()
-        logger.info(f'Processed source connector config: {processed_src_conn_cfg}')
+        src_cfg_handler = ConnectorCfgHandler(direction='source', raw_connector_cfg=self.src_to_tgt_cfg['src'])
+        src_connector_type = src_cfg_handler.get_connector_type()
+        src_processed_conn_cfg = src_cfg_handler.prepare_processed_cfg_for_connector()
+        src_conn_select_handler = ConnectorSelectionHandler(connector_type=src_connector_type, processed_connector_cfg=src_processed_conn_cfg)
+        logger.info(f'Processed source connector config: {src_processed_conn_cfg}')
         src_connector = src_conn_select_handler.get_req_connector()
-        df = src_connector.read_from_source(spark=self.spark, **processed_src_conn_cfg)
+        df = src_connector.read_from_source(spark=self.spark, **src_processed_conn_cfg)
         df.show(10)
         logger.info(f'Loaded file {self.dataset} into Dataframe')
         logger.info(f'{df.take(10)}')
@@ -90,11 +92,13 @@ class DataIngestionPipeline(AbstractDataPipeline):
         if self.df is None:
             raise Exception('Cannot load data to a sink from a DataFrame object that does not exist')
         else:
-            target_conn_select_handler = ConnectorSelectionHandler(direction='sink', raw_connector_cfg=self.src_to_tgt_cfg['target'])
-            processed_target_conn_cfg = target_conn_select_handler.get_processed_connector_cfg()
+            target_cfg_handler = ConnectorCfgHandler(direction='sink', raw_connector_cfg=self.src_to_tgt_cfg['target'])
+            target_connector_type = target_cfg_handler.get_connector_type()
+            target_processed_conn_cfg = target_cfg_handler.prepare_processed_cfg_for_connector()
+            target_conn_select_handler = ConnectorSelectionHandler(connector_type=target_connector_type, processed_connector_cfg=target_processed_conn_cfg)
             target_connector = target_conn_select_handler.get_req_connector()
-            logger.info(f'Processed target connector config: {processed_target_conn_cfg}')
-            target_connector.write_to_sink(df=self.df, **processed_target_conn_cfg)
+            logger.info(f'Processed target connector config: {target_processed_conn_cfg}')
+            target_connector.write_to_sink(df=self.df, **target_processed_conn_cfg)
             logger.info(f'Loaded DataFrame into target')
 
 class DataIngestionBatchMetadata:

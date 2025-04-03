@@ -7,7 +7,7 @@ from src.utils.cfg_reader import YamlCfgReader
 
 ACCEPTED_CONNECTOR_TYPES = ['local_file', 'postgres']
 
-class AbstractConnectorHandler(ABC):
+class ConnectorCfgHandler:
     def __init__(self, direction: str, raw_connector_cfg: Dict):
         if direction not in ['source', 'sink']:
             raise ValueError('Direction can only be one of "source" or "sink"')
@@ -55,10 +55,6 @@ class AbstractConnectorHandler(ABC):
     def get_processed_connector_cfg(self) -> Optional[Dict]:
         return self.processed_connector_cfg
 
-class ConnectorCfgHandler(AbstractConnectorHandler):
-    def __init__(self, direction: str, raw_connector_cfg: Dict):
-        super().__init__(direction=direction, raw_connector_cfg=raw_connector_cfg)
-
     def prepare_processed_cfg_for_connector(self) -> Dict:
         
         match self.connector_type:
@@ -84,7 +80,7 @@ class ConnectorCfgHandler(AbstractConnectorHandler):
                 'write_props': self.raw_connector_cfg['write_props']
             }
 
-        super().set_processed_connector_cfg(processed_connector_cfg=processed_connector_cfg)
+        self.set_processed_connector_cfg(processed_connector_cfg=processed_connector_cfg)
 
         return processed_connector_cfg
 
@@ -107,20 +103,14 @@ class ConnectorCfgHandler(AbstractConnectorHandler):
                 'write_props': self.raw_connector_cfg['write_props']
             }
 
-        super().set_processed_connector_cfg(processed_connector_cfg=processed_connector_cfg)
+        self.set_processed_connector_cfg(processed_connector_cfg=processed_connector_cfg)
 
         return processed_connector_cfg
     
-class ConnectorSelectionHandler(AbstractConnectorHandler):
-    def __init__(self, direction: str, raw_connector_cfg: Dict):
-        super().__init__(direction=direction, raw_connector_cfg=raw_connector_cfg)
-        self.connector_cfg_handler = None
-
-    def get_processed_connector_cfg(self) -> Dict:
-        connector_cfg_handler = ConnectorCfgHandler(direction=self.direction, raw_connector_cfg=self.raw_connector_cfg)
-        processed_connector_cfg = connector_cfg_handler.prepare_processed_cfg_for_connector()
-        super().set_processed_connector_cfg(processed_connector_cfg=processed_connector_cfg)
-        return processed_connector_cfg
+class ConnectorSelectionHandler:
+    def __init__(self, connector_type: str, processed_connector_cfg: Dict):
+        self.connector_type = connector_type
+        self.processed_connector_cfg = processed_connector_cfg
     
     def get_req_connector(self) -> AbstractConnector:
         
@@ -135,24 +125,28 @@ if __name__ == '__main__':
     etl_id = 'ingest~dataset1'
 
     yml_cfg_reader = YamlCfgReader()
-    src_to_tgt_cfg = yml_cfg_reader.read_cfg(file_path='cfg/batch_data_pipeline_app/01_ingestion/src_to_target.yml')[etl_id]
+    src_to_tgt_cfg = yml_cfg_reader.read_cfg(file_path='cfg/batch_data_pipeline_app/ingestion/src_to_target.yml')[etl_id]
 
     spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
     spark_app_props = spark_app_cfg.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
 
-    src_conn_select_handler = ConnectorSelectionHandler(direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])
-    processed_src_conn_cfg = src_conn_select_handler.get_processed_connector_cfg()
+    src_cfg_handler = ConnectorCfgHandler(direction='source', raw_connector_cfg=src_to_tgt_cfg['src'])
+    src_connector_type = src_cfg_handler.get_connector_type()
+    src_processed_conn_cfg = src_cfg_handler.prepare_processed_cfg_for_connector()
+    src_conn_select_handler = ConnectorSelectionHandler(connector_type=src_connector_type, processed_connector_cfg=src_processed_conn_cfg)
     src_connector = src_conn_select_handler.get_req_connector()
-    print(f'Processed source connector config: {processed_src_conn_cfg}')
-    df = src_connector.read_from_source(spark=spark, **processed_src_conn_cfg)
+    print(f'Processed source connector config: {src_processed_conn_cfg}')
+    df = src_connector.read_from_source(spark=spark, **src_processed_conn_cfg)
     df.show()
     
-    target_conn_select_handler = ConnectorSelectionHandler(direction='sink', raw_connector_cfg=src_to_tgt_cfg['target'])
-    processed_target_conn_cfg = target_conn_select_handler.get_processed_connector_cfg()
+    target_cfg_handler = ConnectorCfgHandler(direction='sink', raw_connector_cfg=src_to_tgt_cfg['target'])
+    target_connector_type = target_cfg_handler.get_connector_type()
+    target_processed_conn_cfg = target_cfg_handler.prepare_processed_cfg_for_connector()
+    target_conn_select_handler = ConnectorSelectionHandler(connector_type=target_connector_type, processed_connector_cfg=target_processed_conn_cfg)
     target_connector = target_conn_select_handler.get_req_connector()
-    print(f'Processed target connector config: {processed_target_conn_cfg}')
+    print(f'Processed target connector config: {target_processed_conn_cfg}')
     df = spark.createDataFrame(data=[{'person': 'John', 'age': 20}, {'person': 'James', 'age': 30}])
     df.show()
-    target_connector.write_to_sink(df=df, **processed_target_conn_cfg)
+    target_connector.write_to_sink(df=df, **target_processed_conn_cfg)
