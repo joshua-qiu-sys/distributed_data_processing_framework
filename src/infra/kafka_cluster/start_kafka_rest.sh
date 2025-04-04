@@ -1,3 +1,3 @@
 #!/bin/bash
 
-. $CONFLUENT_KAFKA_HOME/bin/kafka-rest-start "$@"
+$CONFLUENT_KAFKA_HOME/bin/kafka-rest-start "$@"
