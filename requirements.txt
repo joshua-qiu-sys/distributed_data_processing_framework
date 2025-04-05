@@ -6,3 +6,6 @@ pytest
 apache-airflow
 apache-airflow-providers-apache-spark
 confluent-kafka
+dataclasses-avroschema
+cachetools
+authlib
