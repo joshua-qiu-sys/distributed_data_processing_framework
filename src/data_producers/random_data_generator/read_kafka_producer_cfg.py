@@ -16,8 +16,6 @@ class KafkaProducerCfgReader(BaseCfgReader):
 
     def read_producer_props_cfg(self,
                                 producer_props_conf_path: Path = RAND_DATA_GEN_KAFKA_PRODUCER_CONF_PATH,
-                                producer_key_serial_callback_func: Callable = None,
-                                producer_val_serial_callback_func: Callable = None,
                                 kafka_cluster_conf_path: Optional[Path] = KAFKA_CLUSTER_CONF_PATH,
                                 kafka_cluster_conf_section: Optional[str] = 'DEFAULT') -> Dict[str, Union[str, int]]:
         
