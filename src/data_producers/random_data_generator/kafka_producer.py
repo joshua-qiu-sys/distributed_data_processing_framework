@@ -1,8 +1,9 @@
 from confluent_kafka import Producer, KafkaException
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
-from confluent_kafka.serialization import StringSerializer, StringDeserializer, SerializationContext, MessageField
-from typing import Dict
+from confluent_kafka.schema_registry.avro import BaseSerializer, AvroSerializer, AvroDeserializer
+from confluent_kafka.serialization import Serializer, StringSerializer, StringDeserializer, SerializationContext, MessageField
+from abc import ABC, abstractmethod
+from typing import Dict, Union
 from random import choice
 import time
 from decimal import Decimal
@@ -11,6 +12,116 @@ from read_kafka_producer_cfg import KafkaProducerCfgReader
 from schemas.consumer_good import ConsumerGood
 
 logger = logging.getLogger(f'random_data_generator')
+
+ACCEPTED_KAKFA_SCHEMA_REGISTRIES = ['confluent_kafka']
+
+class AbstractKafkaSchemaRegistryConnector(ABC):
+    @abstractmethod
+    def get_schema_registry_client():
+        raise NotImplementedError
+    
+class ConfluentKafkaSchemaRegistryConnector(AbstractKafkaSchemaRegistryConnector):
+    def __init__(self):
+        super().__init__()
+
+    def get_schema_registry_client(self, **kwargs) -> str:
+        schema_registry_client_conf = kwargs['conf']
+        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+        return schema_registry_client
+    
+class KafkaSchemaHandler:
+    def __init__(self, schema_registry_type: str = 'confluent_kafka'):
+        if schema_registry_type not in ACCEPTED_KAKFA_SCHEMA_REGISTRIES:
+            raise ValueError(f'Schema registry type provided is not supported. Accepted schema registries are: {ACCEPTED_KAKFA_SCHEMA_REGISTRIES}')
+        self.schema_registry_type = schema_registry_type
+
+    def _set_schema_registry_client(self, schema_registry_client: Union[SchemaRegistryClient]) -> None:
+        self.schema_registry_client = schema_registry_client
+
+    def get_schema_registry_client(self, schema_registry_client_conf: Dict[str, str]) -> AbstractKafkaSchemaRegistryConnector:
+        match self.schema_registry_type:
+            case 'confluent_kafka':
+                schema_registry_conn = ConfluentKafkaSchemaRegistryConnector()
+                schema_registry_client = schema_registry_conn.get_schema_registry_client(**schema_registry_client_conf)
+        self._set_schema_registry_client(schema_registry_client=schema_registry_client)
+        return schema_registry_client
+
+    def get_kafka_schema(self, kafka_schema_conf: Dict[str, str]) -> str:
+        match self.schema_registry_type:
+            case 'confluent_kafka':
+                subject_name = kafka_schema_conf['subject_name']
+                fmt = kafka_schema_conf['fmt']
+                kafka_schema = self.schema_registry_client.get_latest_version(subject_name=subject_name, fmt=fmt)
+                kafka_schema_str = kafka_schema.schema.schema_str
+        return kafka_schema_str
+
+class KafkaMsgSerialisation:
+    def __init__(self,
+                 key_serialiser: Union[Serializer, BaseSerializer],
+                 key_deserialiser: Union[Serializer, BaseSerializer],
+                 val_serialiser: Union[Serializer, BaseSerializer],
+                 val_deserialiser: Union[Serializer, BaseSerializer],):
+        
+        self.key_serialiser = key_serialiser
+        self.key_deserialiser = key_deserialiser
+        self.val_serialiser = val_serialiser
+        self.val_deserialiser = val_deserialiser
+
+    def get_key_serialiser(self) -> Union[Serializer, BaseSerializer]:
+        return self.key_serialiser
+    
+    def get_key_deserialiser(self) -> Union[Serializer, BaseSerializer]:
+        return self.key_deserialiser
+    
+    def get_val_serialiser(self) -> Union[Serializer, BaseSerializer]:
+        return self.val_serialiser
+    
+    def get_val_deserialiser(self) -> Union[Serializer, BaseSerializer]:
+        return self.val_deserialiser
+
+class KafkaMsgProducer(Producer):
+    def __init__(self, producer_props: Dict[str, Union[str, int]]):
+        self.producer = Producer(producer_props)
+        self.producer_props = producer_props
+
+        curr_time = time.time()
+        self.last_poll_time = curr_time
+        self.last_flush_time = curr_time
+
+        self.kafka_schema_handler = None
+        self.kafka_msg_serialisation = None
+
+    def _delivery_callback(self):
+        pass
+
+    def _message_value_from_dict(self):
+        pass
+
+    def _message_value_to_dict(self):
+        pass
+
+    def produce_message(self):
+        pass
+
+class KafkaTransactionalMsgProducer(KafkaMsgProducer):
+    def __init__(self, producer_props: Dict[str, Union[str, int]]):
+        super().__init__(producer_props)
+        self._init_transactional_mode()
+
+    def _init_transactional_mode(self) -> None:
+        self.producer.init_transactions()
+
+    def _delivery_callback(self):
+        pass
+
+    def _message_value_from_dict(self):
+        pass
+
+    def _message_value_to_dict(self):
+        pass
+
+    def produce_message(self):
+        pass
 
 def produce_message():
 
