@@ -2,8 +2,7 @@ from pyspark.sql import SparkSession, DataFrame, Row
 import pyspark.sql.functions as F
 import datetime as dt
 from typing import List, Dict, Optional, Union
-from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from batch_data_pipeline_app.batch_utils.connectors import LocalFileConnector
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfgHandler, PysparkSessionBuilder
 
 class DatasetValidationResult:
     def __init__(self,
@@ -186,8 +185,8 @@ class DatasetValidation:
 if __name__ == '__main__':
     etl_id = 'ingest~dataset1'
 
-    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
-    spark_app_props = spark_app_cfg.get_app_props()
+    spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg_handler.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
     df = spark.read.parquet('data/raw/dataset1')

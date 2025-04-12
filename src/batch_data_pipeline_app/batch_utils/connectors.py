@@ -2,8 +2,8 @@ from pyspark.sql import SparkSession, DataFrame
 from typing import Any, Dict, Optional, Union
 from pathlib import Path
 from abc import ABC, abstractmethod
-from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
-from src.utils.cfg_reader import IniCfgReader
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfgHandler, PysparkSessionBuilder
+from src.utils.cfg_management import IniCfgReader
 from cfg.resource_paths import CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH
 
 POSTGRES_CONF_PATH = Path(CONNECTORS_CONF_ROOT, POSTGRES_CONNECTOR_CONF_SUBPATH)
@@ -173,8 +173,8 @@ class PostgreSQLConnector(AbstractConnector):
 if __name__ == '__main__':
     etl_id = 'ingest~dataset1'
 
-    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
-    spark_app_props = spark_app_cfg.get_app_props()
+    spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg_handler.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
     file_connector = LocalFileConnector()

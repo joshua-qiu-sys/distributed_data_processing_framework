@@ -99,6 +99,16 @@ class YamlCfgReader(BaseCfgReader):
             return cfg
         except TemplateError as e:
             raise TemplateError(f'Error encountered while templating YAML config {file_path} : {str(e)}')
+        
+class AbstractCfgHandler(ABC):
+    @abstractmethod
+    def process_cfg():
+        raise NotImplementedError
+    
+class AbstractCfgManager(ABC):
+    @abstractmethod
+    def __init__(self, cfg):
+        raise NotImplementedError
             
 if __name__ == '__main__':
     ini_cfg_reader = IniCfgReader()

@@ -5,7 +5,7 @@ from airflow.utils.dates import days_ago
 import os
 import datetime as dt
 from pathlib import Path
-from batch_data_pipeline_app.ingestion.main import DataIngestionBatchMetadata
+from batch_data_pipeline_app.ingestion.main import BatchIngestionMetadata
 from cfg.resource_paths import PROJECT_DIR, BATCH_APP_ROOT, BATCH_INGEST_SPARK_APP_SUBPATH
 
 BATCH_INGEST_SPARK_APP_PATH = Path(PROJECT_DIR, BATCH_APP_ROOT, BATCH_INGEST_SPARK_APP_SUBPATH)
@@ -16,7 +16,7 @@ default_args = {
     'start_date': days_ago(1)
 }
 
-ingest_batch_metadata = DataIngestionBatchMetadata()
+ingest_batch_metadata = BatchIngestionMetadata()
 ingest_batch_metadata.get_etl_jobs_from_conf()
 
 with DAG(dag_id=dag_id, default_args=default_args) as dag:

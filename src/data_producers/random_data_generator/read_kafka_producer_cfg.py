@@ -1,7 +1,7 @@
-from typing import Dict, Optional, Union, Callable
+from typing import Dict, Optional, Union
 from pathlib import Path
 import logging
-from src.utils.cfg_reader import BaseCfgReader, YamlCfgReader, IniCfgReader
+from src.utils.cfg_management import BaseCfgReader, YamlCfgReader, IniCfgReader
 from cfg.resource_paths import DATA_PRODUCERS_CONF_ROOT, RAND_DATA_GEN_CONF_SUBPATH, \
                                RAND_DATA_GEN_KAFKA_PRODUCER_CONF_SUBPATH, INFRA_CONF_ROOT, KAFKA_CLUSTER_CONF_SUBPATH
 

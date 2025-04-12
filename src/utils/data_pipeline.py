@@ -12,5 +12,4 @@ class AbstractDataPipeline(ABC):
     
     @abstractmethod
     def load(self):
-        raise NotImplementedError
-        
+        raise NotImplementedError        

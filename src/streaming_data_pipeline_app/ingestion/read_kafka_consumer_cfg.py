@@ -1,7 +1,7 @@
 from typing import Dict, Optional, Union, Callable
 from pathlib import Path
 import logging
-from src.utils.cfg_reader import BaseCfgReader, YamlCfgReader, IniCfgReader
+from src.utils.cfg_management import BaseCfgReader, YamlCfgReader, IniCfgReader
 from cfg.resource_paths import STREAM_APP_CONF_ROOT, STREAM_INGEST_CONF_SUBPATH, STREAM_INGEST_KAFKA_CONSUMER_CONF_SUBPATH, \
                                INFRA_CONF_ROOT, KAFKA_CLUSTER_CONF_SUBPATH
 

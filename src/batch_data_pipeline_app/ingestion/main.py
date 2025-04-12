@@ -2,22 +2,32 @@ from pyspark.sql import SparkSession, DataFrame
 from typing import List, Dict, Optional
 import sys
 import logging
-from batch_data_pipeline_app.ingestion.read_ingestion_cfg import IngestionCfgReader
-from batch_data_pipeline_app.batch_utils.connector_handlers import ConnectorCfgHandler, ConnectorSelectionHandler
-from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.ingestion.ingestion_cfg_management import IngestionCfgReader, DatasetIngestionCfgManager
+from batch_data_pipeline_app.batch_utils.connector_management import ConnectorCfgHandler, ConnectorFactoryRegistry, ConnectorFactory
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfgHandler, PysparkSessionBuilder
 from batch_data_pipeline_app.batch_utils.data_validation import DatasetValidation
-from batch_data_pipeline_app.batch_utils.data_pipeline import AbstractDataPipeline
+from src.utils.data_pipeline import AbstractDataPipeline
 from src.utils.application_logger import ApplicationLogger
+
+from batch_data_pipeline_app.batch_utils.connector_management import ACCEPTED_CONNECTOR_TYPES
 
 logger = logging.getLogger('batch_ingestion_app')
         
-class DataIngestionPipeline(AbstractDataPipeline):
-    def __init__(self, spark: SparkSession, etl_id: str, src_to_tgt_cfg: Dict, src_data_vald_cfg: Dict = None, phases: Optional[List[str]] = ['extraction', 'validation', 'load']):
+class DatasetIngestionPipeline(AbstractDataPipeline):
+    def __init__(self,
+                 spark: SparkSession,
+                 etl_id: str,
+                 ingest_cfg_manager: DatasetIngestionCfgManager,
+                 connector_factory: ConnectorFactory,
+                 phases: Optional[List[str]] = ['extraction', 'validation', 'load']):
+        
         self.spark = spark
         self.etl_id = etl_id
-        self.src_to_tgt_cfg = src_to_tgt_cfg
-        self.src_data_vald_cfg = src_data_vald_cfg
-        self.dataset = self.src_to_tgt_cfg['src']['dataset_name']
+        self.ingest_cfg_manager = ingest_cfg_manager
+        self.src_connector_cfg_handler = ConnectorCfgHandler(direction='source', raw_connector_cfg=self.ingest_cfg_manager.get_src_to_tgt_cfg()['src'])
+        self.target_connector_cfg_handler = ConnectorCfgHandler(direction='sink', raw_connector_cfg=self.ingest_cfg_manager.get_src_to_tgt_cfg()['target'])
+        self.connector_factory = connector_factory
+        self.dataset = self.ingest_cfg_manager.get_src_to_tgt_cfg()['src']['dataset_name']
         if 'extraction' not in phases or 'load' not in phases:
             raise ValueError('Data pipeline phases must contain "extraction" and "load"')
         else:    
@@ -44,12 +54,10 @@ class DataIngestionPipeline(AbstractDataPipeline):
         self.load()
 
     def extract(self) -> DataFrame:
-        src_cfg_handler = ConnectorCfgHandler(direction='source', raw_connector_cfg=self.src_to_tgt_cfg['src'])
-        src_connector_type = src_cfg_handler.get_connector_type()
-        src_processed_conn_cfg = src_cfg_handler.prepare_processed_cfg_for_connector()
-        src_conn_select_handler = ConnectorSelectionHandler(connector_type=src_connector_type, processed_connector_cfg=src_processed_conn_cfg)
+        src_connector_type = self.src_connector_cfg_handler.get_connector_type()
+        src_processed_conn_cfg = self.src_connector_cfg_handler.process_cfg()
         logger.info(f'Processed source connector config: {src_processed_conn_cfg}')
-        src_connector = src_conn_select_handler.get_req_connector()
+        src_connector = self.connector_factory.create(connector_type=src_connector_type)
         df = src_connector.read_from_source(spark=self.spark, **src_processed_conn_cfg)
         df.show(10)
         logger.info(f'Loaded file {self.dataset} into Dataframe')
@@ -58,11 +66,12 @@ class DataIngestionPipeline(AbstractDataPipeline):
         return df
     
     def validate(self) -> DatasetValidation:
-        validations = [vald for vald in self.src_data_vald_cfg['req_validations'].keys()]
+        src_data_vald_cfg = self.ingest_cfg_manager.get_src_data_vald_cfg()
+        validations = [vald for vald in src_data_vald_cfg['req_validations'].keys()]
         logger.info(f'Validations to perform: {validations}')
-        primary_key_cols = self.src_data_vald_cfg['req_validations']['primary_key_validation']['cols_to_check']
+        primary_key_cols = src_data_vald_cfg['req_validations']['primary_key_validation']['cols_to_check']
         logger.info(f'Primary key cols: {primary_key_cols}')
-        non_nullable_cols = self.src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
+        non_nullable_cols = src_data_vald_cfg['req_validations']['null_validation']['cols_to_check']
         logger.info(f'Non-nullable cols: {non_nullable_cols}')
         
         dataset_vald = DatasetValidation(spark=self.spark,
@@ -92,16 +101,14 @@ class DataIngestionPipeline(AbstractDataPipeline):
         if self.df is None:
             raise Exception('Cannot load data to a sink from a DataFrame object that does not exist')
         else:
-            target_cfg_handler = ConnectorCfgHandler(direction='sink', raw_connector_cfg=self.src_to_tgt_cfg['target'])
-            target_connector_type = target_cfg_handler.get_connector_type()
-            target_processed_conn_cfg = target_cfg_handler.prepare_processed_cfg_for_connector()
-            target_conn_select_handler = ConnectorSelectionHandler(connector_type=target_connector_type, processed_connector_cfg=target_processed_conn_cfg)
-            target_connector = target_conn_select_handler.get_req_connector()
+            target_connector_type = self.target_connector_cfg_handler.get_connector_type()
+            target_processed_conn_cfg = self.target_connector_cfg_handler.process_cfg()
+            target_connector = connector_factory.create(connector_type=target_connector_type)
             logger.info(f'Processed target connector config: {target_processed_conn_cfg}')
             target_connector.write_to_sink(df=self.df, **target_processed_conn_cfg)
             logger.info(f'Loaded DataFrame into target')
 
-class DataIngestionBatchMetadata:
+class BatchIngestionMetadata:
     def __init__(self, etl_jobs: List[str] = None):
         self.etl_jobs = etl_jobs
 
@@ -122,8 +129,8 @@ class DataIngestionBatchMetadata:
         if etl_jobs_list is None:
             etl_jobs_list = self.etl_jobs
         for etl_job in etl_jobs_list:
-            spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_job)
-            spark_app_props = spark_app_cfg.get_app_props()
+            spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_section=etl_job)
+            spark_app_props = spark_app_cfg_handler.get_app_props()
             if 'spark.jars' in spark_app_props.keys():
                 req_spark_jar = spark_app_props['spark.jars']
             else:
@@ -145,16 +152,25 @@ if __name__ == '__main__':
     logger.info(f'Successfully read source data validation configurations: {src_data_vald_cfg}')
     
     spark_app_name = 'Pyspark App'
-    spark_app_cfg = PysparkAppCfg(spark_app_conf_section=etl_id)
-    spark_app_props = spark_app_cfg.get_app_props()
+    spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_section=etl_id)
+    spark_app_props = spark_app_cfg_handler.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name=spark_app_name, app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
     logger.info(f'Created Spark session for {spark_app_name}')
 
-    data_ingest_pipeline = DataIngestionPipeline(spark=spark,
+    ingest_cfg_manager = DatasetIngestionCfgManager(src_to_tgt_cfg=src_to_tgt_cfg, src_data_vald_cfg=src_data_vald_cfg)
+    logger.info(f'Created dataset ingestion config manager')
+
+    connector_factory_registry = ConnectorFactoryRegistry()
+    connector_factory_registry.register_defaults(default_connector_dict=ACCEPTED_CONNECTOR_TYPES)
+    logger.info(f'Created connector factory registry with accepted connector types: {ACCEPTED_CONNECTOR_TYPES}')
+    connector_factory = ConnectorFactory(factory_registry=connector_factory_registry)
+    logger.info(f'Created connector factory')
+
+    data_ingest_pipeline = DatasetIngestionPipeline(spark=spark,
                                                  etl_id=etl_id,
-                                                 src_to_tgt_cfg=src_to_tgt_cfg,
-                                                 src_data_vald_cfg=src_data_vald_cfg,
+                                                 ingest_cfg_manager=ingest_cfg_manager,
+                                                 connector_factory=connector_factory,
                                                  phases=['extraction', 'validation', 'load'])
     dataset = data_ingest_pipeline.get_dataset_name()
     data_ingest_pipeline.execute_pipeline()

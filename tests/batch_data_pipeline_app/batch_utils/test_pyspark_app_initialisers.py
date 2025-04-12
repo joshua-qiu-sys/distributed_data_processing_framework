@@ -2,7 +2,7 @@ import pytest
 import os
 from pathlib import Path
 from collections import namedtuple
-from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfg, PysparkSessionBuilder
+from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import PysparkAppCfgHandler, PysparkSessionBuilder
 
 SparkSessionConfFixture = namedtuple('SparkSessionConfFixture',
                                      ['spark_app_conf_etl_id', 'spark_app_conf', 'spark_jars_conf',
@@ -102,12 +102,12 @@ def test_get_or_create_spark_session(spark_session_conf: SparkSessionConfFixture
     spark_jars_conf_path = spark_session_conf.spark_jars_conf_path
     spark_app_conf_expected = spark_session_conf.expected
 
-    spark_app_cfg = PysparkAppCfg(spark_app_conf_path=spark_app_conf_path,
+    spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_path=spark_app_conf_path,
                                   spark_jars_conf_path=spark_jars_conf_path,
                                   spark_app_conf_section=spark_app_conf_etl_id,
                                   spark_jar_conf_section=spark_jars_conf_section,
                                   spark_jar_path_dict=spark_jar_path_dict)
-    spark_app_props = spark_app_cfg.get_app_props()
+    spark_app_props = spark_app_cfg_handler.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark Test App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()
 
