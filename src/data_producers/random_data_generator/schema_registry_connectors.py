@@ -12,9 +12,9 @@ class ConfluentKafkaSchemaRegistryClient(AbstractSchemaRegistryClient):
         conf = schema_registry_client_conf['conf']
         self.client = SchemaRegistryClient(conf=conf)
 
-    def get_schema(self, schema_props: Dict[str, str]):
-        subject_name = schema_props['subject_name']
-        fmt = schema_props['fmt'] if 'fmt' in schema_props.keys() else None
+    def get_schema(self, schema_details: Dict[str, str]):
+        subject_name = schema_details['subject_name']
+        fmt = schema_details['fmt'] if 'fmt' in schema_details.keys() else None
         self.get_schema_from_confluent_kafka(subject_name=subject_name, fmt=fmt)
 
     def get_schema_from_confluent_kafka(self, subject_name: str, fmt: str = None) -> str:
