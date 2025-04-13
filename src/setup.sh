@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PROJECT_DIR=/home/joshuaqiu/Projects/pyspark_etl_framework
+export PROJECT_DIR=/home/joshuaqiu/Projects/distributed_data_processing_framework
 echo "PROJECT_DIR is set to: $PROJECT_DIR"
 
 export PYSPARK_PYTHON=$(which python3.12)

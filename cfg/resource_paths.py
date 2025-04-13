@@ -1,4 +1,4 @@
-PROJECT_DIR = '/home/joshuaqiu/Projects/pyspark_etl_framework'
+PROJECT_DIR = '/home/joshuaqiu/Projects/distributed_data_processing_framework'
 
 LOG_CONF_PATH = 'cfg/logging/log.conf'
 
