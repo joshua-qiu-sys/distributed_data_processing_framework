@@ -7,5 +7,5 @@
 "request.timeout.ms": 30000 # 30s
 "max.in.flight.requests.per.connection": 5
 "enable.idempotence": true
-"transactional.id": transactional_random_data_generator
+# "transactional.id": transactional_random_data_generator
 "transaction.timeout.ms": 60000 # 1min
