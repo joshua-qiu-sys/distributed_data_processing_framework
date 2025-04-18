@@ -1,0 +1,30 @@
+key_serialisation:
+  key_serialisation_factory:
+    serialisation_library: confluent_kafka
+    serialisation_type: string
+  key_serialiser:
+    codec: utf8
+  key_deserialiser:
+    codec: utf8
+
+val_serialisation:
+  schema_details:
+    subject_name: ConsumerGood-value
+  val_serialisation_factory:
+    serialisation_library: confluent_kafka
+    serialisation_type: avro
+  val_serialiser:
+    schema_registry_client: {{ schema_registry_client }}
+    schema_str: {{ val_schema }}
+    to_dict: {{ kafka_msg_val_to_dict_callable }}
+  val_deserialiser:
+    schema_registry_client: {{ schema_registry_client }}
+    schema_str: {{ val_schema }}
+    from_dict: {{ kafka_msg_val_from_dict_callable }}
+  val_serialisation:
+    ctx: {{ val_serialisation_context }}
+  val_deserialisation:
+    ctx: {{ val_serialisation_context }}
+  kafka_msg_converter:
+    msg_dataclass_name: ConsumerGood
+    msg_dataclass: {{ msg_val_dataclass }}

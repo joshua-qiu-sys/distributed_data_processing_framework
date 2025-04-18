@@ -47,7 +47,7 @@ if __name__ == '__main__':
     print(f'Source to target cfg: {src_to_tgt_cfg}')
     print(f'Source data validation cfg: {src_data_vald_cfg}')
     ingest_cfg_manager = DatasetIngestionCfgManager(etl_jobs_cfg=ingest_etl_jobs_cfg,
-                                             src_to_tgt_cfg=src_to_tgt_cfg,
-                                             src_data_vald_cfg=src_data_vald_cfg)
+                                                    src_to_tgt_cfg=src_to_tgt_cfg,
+                                                    src_data_vald_cfg=src_data_vald_cfg)
     print(f'Dataset ingestion config manager - source to target cfg: {ingest_cfg_manager.get_src_to_tgt_cfg()}')
     print(f'Dataset ingestion config manager - source data validation cfg: {ingest_cfg_manager.get_src_data_vald_cfg()}')

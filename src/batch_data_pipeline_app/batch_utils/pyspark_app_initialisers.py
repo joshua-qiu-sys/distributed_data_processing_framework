@@ -19,17 +19,17 @@ class PysparkAppCfgHandler(AbstractCfgHandler):
         self.app_props = app_props
         if self.app_props is None:
             self.process_cfg(spark_app_conf_path=spark_app_conf_path,
-                                                   spark_jars_conf_path=spark_jars_conf_path,
-                                                   spark_app_conf_section=spark_app_conf_section,
-                                                   spark_jar_conf_section=spark_jar_conf_section,
-                                                   spark_jar_path_dict=spark_jar_path_dict)
+                             spark_jars_conf_path=spark_jars_conf_path,
+                             spark_app_conf_section=spark_app_conf_section,
+                             spark_jar_conf_section=spark_jar_conf_section,
+                             spark_jar_path_dict=spark_jar_path_dict)
             
     def process_cfg(self,
-                          spark_app_conf_path: Path = SPARK_APP_CONF_PATH,
-                          spark_jars_conf_path: Path = JARS_CONF_PATH,
-                          spark_app_conf_section: str = 'default',
-                          spark_jar_conf_section: str = 'DEFAULT',
-                          spark_jar_path_dict: Dict[str, str] = None) -> Dict[str, Union[str, int, float]]:
+                    spark_app_conf_path: Path = SPARK_APP_CONF_PATH,
+                    spark_jars_conf_path: Path = JARS_CONF_PATH,
+                    spark_app_conf_section: str = 'default',
+                    spark_jar_conf_section: str = 'DEFAULT',
+                    spark_jar_path_dict: Dict[str, str] = None) -> Dict[str, Union[str, int, float]]:
         
         self._get_rendered_app_props_from_conf(spark_app_conf_path=spark_app_conf_path,
                                                spark_jars_conf_path=spark_jars_conf_path,

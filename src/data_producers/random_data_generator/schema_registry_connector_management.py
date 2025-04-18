@@ -1,5 +1,5 @@
 from typing import Dict
-from data_producers.random_data_generator.schema_registry_connectors import AbstractSchemaRegistryConnector, ConfluentKafkaSchemaRegistryConnector
+from src.data_producers.random_data_generator.schema_registry_connectors import AbstractSchemaRegistryConnector, ConfluentKafkaSchemaRegistryConnector
 from src.utils.constructors import AbstractFactory, AbstractFactoryRegistry
 
 ACCEPTED_SCHEMA_REGISTRIES = {
@@ -43,5 +43,5 @@ class SchemaRegistryConnectorFactory(AbstractFactory):
         if not self.factory_registry.is_registered(schema_registry_type=schema_registry_type):
             raise KeyError(f'Schema registry type "{schema_registry_type}" not found in factory registry')
         schema_registry_connector_cls = self.factory_registry.lookup_registry(schema_registry_type=schema_registry_type)
-        schema_registry_connector = schema_registry_connector_cls(schema_registry_type=schema_registry_type)
+        schema_registry_connector = schema_registry_connector_cls()
         return schema_registry_connector

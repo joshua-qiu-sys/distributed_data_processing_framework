@@ -2,280 +2,32 @@ from confluent_kafka import Producer, Message, KafkaError, KafkaException
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
 from confluent_kafka.serialization import StringSerializer, StringDeserializer, SerializationContext, MessageField
-from abc import ABC, abstractmethod
-from dataclasses import fields, is_dataclass
-from typing import Dict, Union, Any, Type, Callable, Optional
+from typing import Dict, Union, Any, Optional
 from random import choice
 import time
 from decimal import Decimal
 import logging
-from kafka_producer_cfg_management import KafkaProducerCfgReader
-from schema_registry_connectors import AbstractSchemaRegistryClient, ConfluentKafkaSchemaRegistryConnector
-from schemas.consumer_good import ConsumerGood
-from src.utils.cfg_management import AbstractCfgManager
-from src.utils.constructors import AbstractFactory, AbstractFactoryRegistry
+from src.data_producers.random_data_generator.kafka_producer_cfg_management import KafkaProducerCfgManager, KafkaProducerTopicCfgReader, KafkaProducerPropsCfgReader, KafkaProducerSchemaRegistryConnCfgReader, KafkaProducerMsgSerialisationCfgReader, KafkaProducerMsgSerialisationCfgHandler
+from src.data_producers.random_data_generator.schemas.consumer_good import ConsumerGood
+from src.data_producers.random_data_generator.schema_registry_connector_management import SchemaRegistryConnectorFactory, SchemaRegistryConnectorFactoryRegistry
+from src.data_producers.random_data_generator.serialisation_management import SerialisationHandler, SerialisationFactory, SerialisationFactoryRegistry, SerialisationCfgManager
+from src.data_producers.random_data_generator.schema_registry_connector_management import ACCEPTED_SCHEMA_REGISTRIES
+from src.data_producers.random_data_generator.serialisation_management import ACCEPTED_SERIALISATIONS
 
 logger = logging.getLogger(f'random_data_generator')
-
-class AbstractSerialisation(ABC):
-    @abstractmethod
-    def serialise():
-        raise NotImplementedError
-    
-    @abstractmethod
-    def deserialise():
-        raise NotImplementedError
-
-class AbstractConfluentKafkaSerialisation(AbstractSerialisation):
-    pass
-
-class ConfluentKafkaStringSerialisation(AbstractConfluentKafkaSerialisation):
-    def __init__(self):
-        self.serialiser = None
-        self.deserialiser = None
-
-    def _setup_serialiser(self, serialiser_cfg: Dict = None) -> StringSerializer:
-        string_serialiser = StringSerializer(**serialiser_cfg)
-        self.serialiser = string_serialiser
-        return string_serialiser
-    
-    def _setup_deserialiser(self, deserialiser_cfg: Dict = None) -> StringDeserializer:
-        string_deserialiser = StringDeserializer(**deserialiser_cfg)
-        self.deserialiser = string_deserialiser
-        return string_deserialiser
-    
-    def serialise(self, msg_obj: Any, serialiser_cfg: Dict = None, serialisation_cfg: Dict = None) -> bytes:
-        if self.serialiser is None:
-            self._setup_serialiser(serialiser_cfg=serialiser_cfg)
-        serialised_obj = self.serialiser(msg_obj)
-        return serialised_obj
-    
-    def deserialise(self, bytes_obj: bytes, deserialiser_cfg: Dict = None, deserialisation_cfg: Dict = None) -> Any:
-        if self.deserialiser is None:
-            self._setup_deserialiser(deserialiser_cfg=deserialiser_cfg)
-        deserialised_obj = self.deserialiser(bytes_obj)
-        return deserialised_obj
-
-class ConfluentKafkaAvroSerialisation(AbstractConfluentKafkaSerialisation):
-    def __init__(self):
-        self.serialiser = None
-        self.deserialiser = None
-
-    def _setup_serialiser(self, serialiser_cfg: Dict) -> AvroSerializer:
-        avro_serialiser = self._setup_confluent_kafka_serialiser(**serialiser_cfg)
-        self.serialiser = avro_serialiser
-        return avro_serialiser
-        
-    def _setup_deserialiser(self, deserialiser_cfg: Dict) -> AvroDeserializer:
-        avro_deserialiser = self._setup_confluent_kafka_deserialiser(**deserialiser_cfg)
-        self.deserialiser = avro_deserialiser
-        return avro_deserialiser
-
-    def _setup_confluent_kafka_serialiser(self, schema_registry_client: SchemaRegistryClient, schema_str: str, to_dict: Callable) -> AvroSerializer:
-        avro_serialiser = AvroSerializer(schema_registry_client=schema_registry_client, schema_str=schema_str, to_dict=to_dict)
-        return avro_serialiser
-    
-    def _setup_confluent_kafka_deserialiser(self, schema_registry_client: SchemaRegistryClient, schema_str: str, from_dict: Callable) -> AvroDeserializer:
-        avro_deserialiser = AvroDeserializer(schema_registry_client=schema_registry_client, schema_str=schema_str, from_dict=from_dict)
-        return avro_deserialiser
-    
-    def serialise(self, msg_obj: Any, serialiser_cfg: Dict = None, serialisation_cfg: Dict = None) -> bytes:
-        if self.serialiser is None:
-            self._setup_serialiser(serialiser_cfg=serialiser_cfg)
-        serialised_obj = self.serialiser(msg_obj, **serialisation_cfg)
-        return serialised_obj
-    
-    def deserialise(self, bytes_obj: bytes, deserialiser_cfg: Dict = None, deserialisation_cfg: Dict = None) -> Any:
-        if self.deserialiser is None:
-            self._setup_deserialiser(deserialiser_cfg=deserialiser_cfg)
-        deserialised_obj = self.deserialiser(bytes_obj, **deserialisation_cfg)
-        return deserialised_obj
-    
-class SerialisationFactoryRegistry(AbstractFactoryRegistry):
-    def __init__(self):
-        super().__init__()
-
-    def lookup_registry(self, serialisation_library: str, serialisation_type: str) -> AbstractSerialisation:
-        if not self.is_registered(serialisation_library=serialisation_library, serialisation_type=serialisation_type):
-            return KeyError(f'Serialisation type "{serialisation_type}" of serialisation library {serialisation_library} not found in factory registry')
-        serialisation = self._registry[serialisation_library][serialisation_type]
-        return serialisation
-
-    def is_registered(self, serialisation_library: str, serialisation_type: str) -> bool:
-        if serialisation_library in self._registry.keys():
-            if serialisation_type in self._registry[serialisation_library].keys():
-                return True
-            else:
-                return False
-        else:
-            return False
-
-    def register(self, serialisation_library: str, serialisation_type: str, serialisation: AbstractSerialisation) -> None:
-        if not self.is_registered(serialisation_library=serialisation_library, serialisation_type=serialisation_type):
-            
-            if serialisation_library not in self._registry.keys():
-                self._registry[serialisation_library] = {
-                    serialisation_type: serialisation
-                }
-            elif len(self._registry[serialisation_library]) == 0:
-                self._registry[serialisation_library][serialisation_type] = serialisation
-            else:
-                serialisation_library_entry = self._registry[serialisation_library]
-                serialisation_library_entry.update({
-                    serialisation_type: serialisation
-                })
-                self._registry.update(serialisation_library_entry)
-
-    def register_defaults(self, default_serialisation_dict: Dict) -> None:
-
-        for serialisation_library in default_serialisation_dict.keys():
-            for serialisation_type, serialisation in default_serialisation_dict[serialisation_library].items():
-                self.register(serialisation_library=serialisation_library, serialisation_type=serialisation_type, serialisation=serialisation)
-
-    def deregister(self, serialisation_library: str, serialisation_type: str) -> None:
-        if not self.is_registered(serialisation_library=serialisation_library, serialisation_type=serialisation_type):
-            return KeyError(f'Serialisation type "{serialisation_type}" of serialisation library {serialisation_library} not found in factory registry')
-        self._registry[serialisation_library].pop(serialisation_type)
-        
-    def reset_registry(self):
-        self._registry.clear()
-    
-class SerialisationFactory(AbstractFactory):
-    def __init__(self, factory_registry: SerialisationFactoryRegistry):
-        super().__init__(factory_registry)
-
-    def create(self, serialisation_library: str, serialisation_type: str) -> AbstractSerialisation:
-        if not self.factory_registry.is_registered(serialisation_library=serialisation_library, serialisation_type=serialisation_type):
-            raise KeyError(f'Serialisation type "{serialisation_type}" of serialisation library {serialisation_library} not found in factory registry')
-        serialisation_cls = self.factory_registry.lookup_registry(serialisation_library=serialisation_library, serialisation_type=serialisation_type)
-        serialisation = serialisation_cls()
-        return serialisation
-    
-class KafkaMsgSerialisationCfgManager(AbstractCfgManager):
-    def __init__(self,
-                 key_serialisation_factory_cfg: Dict,
-                 val_serialisation_factory_cfg: Dict,
-                 key_serialiser_cfg: Dict,
-                 key_deserialiser_cfg: Dict,
-                 key_serialisation_cfg: Dict,
-                 key_deserialisation_cfg: Dict,
-                 val_serialiser_cfg: Dict,
-                 val_deserialiser_cfg: Dict,
-                 val_serialisation_cfg: Dict,
-                 val_deserialisation_cfg: Dict):
-        
-        self.key_serialisation_factory_cfg = key_serialisation_factory_cfg
-        self.val_serialisation_factory_cfg = val_serialisation_factory_cfg
-        self.key_serialiser_cfg = key_serialiser_cfg
-        self.key_deserialiser_cfg = key_deserialiser_cfg
-        self.key_serialisation_cfg = key_serialisation_cfg
-        self.key_deserialisation_cfg = key_deserialisation_cfg
-        self.val_serialiser_cfg = val_serialiser_cfg
-        self.val_deserialiser_cfg = val_deserialiser_cfg
-        self.val_serialisation_cfg = val_serialisation_cfg
-        self.val_deserialisation_cfg = val_deserialisation_cfg
-
-    def get_key_serialisation_factory_cfg(self) -> Dict:
-        return self.key_serialisation_factory_cfg
-    
-    def get_val_serialisation_factory_cfg(self) -> Dict:
-        return self.val_serialisation_factory_cfg
-    
-    def get_key_serialiser_cfg(self) -> Dict:
-        return self.key_serialiser_cfg
-    
-    def get_key_deserialiser_cfg(self) -> Dict:
-        return self.key_deserialiser_cfg
-    
-    def get_key_serialisation_cfg(self) -> Dict:
-        return self.key_serialisation_cfg
-    
-    def get_key_deserialisation_cfg(self) -> Dict:
-        return self.key_deserialisation_cfg
-    
-    def get_val_serialiser_cfg(self) -> Dict:
-        return self.val_serialiser_cfg
-    
-    def get_val_deserialiser_cfg(self) -> Dict:
-        return self.val_deserialiser_cfg
-    
-    def get_val_serialisation_cfg(self) -> Dict:
-        return self.val_serialisation_cfg
-    
-    def get_val_deserialisation_cfg(self) -> Dict:
-        return self.val_deserialisation_cfg
-    
-class SchemaHandler:
-    def __init__(self, schema_registry_client: AbstractSchemaRegistryClient, schema_details: Dict[str, str]):
-        self.schema_registry_client = schema_registry_client
-        self.schema_details = schema_details
-
-    def get_schema(self) -> str:
-        schema = self.schema_registry_client.get_schema(schema_details=self.schema_details)
-        return schema
-    
-class SerialisationHandler:
-    def __init__(self,
-                 schema_registry_client: AbstractSchemaRegistryClient,
-                 serialisation_factory: SerialisationFactory,
-                 serialisation_cfg_manager: KafkaMsgSerialisationCfgManager):
-        
-        self.schema_registry_client = schema_registry_client
-        self.serialisation_factory = serialisation_factory
-        self.serialisation_cfg_manager = serialisation_cfg_manager
-        self.key_serialisation = None
-        self.val_serialisation = None
-
-    def setup_serialisation(self) -> None:
-        key_serialisation = self.serialisation_factory.create(**self.serialisation_cfg_manager.get_key_serialisation_factory_cfg())
-        self.key_serialisation = key_serialisation
-        val_serialisation = self.serialisation_factory.create(**self.serialisation_cfg_manager.get_val_serialisation_factory_cfg())
-        self.val_serialisation = val_serialisation
-
-    def get_key_serialisation(self) -> AbstractSerialisation:
-        return self.key_serialisation
-    
-    def get_val_serialisation(self) -> AbstractSerialisation:
-        return self.val_serialisation
-    
-class KafkaMsgConverter:
-    def __init__(self, msg_dataclass: Type[Any]):
-        if not is_dataclass(msg_dataclass):
-            raise TypeError("Message class must be a dataclass type")
-        self.msg_dataclass = msg_dataclass
-
-    def get_kafka_msg_to_dict_callable(self) -> Callable:
-        return self.kafka_msg_to_dict
-    
-    def get_kafka_msg_from_dict_callable(self) -> Callable:
-        return self.kafka_msg_from_dict
-    
-    def kafka_msg_to_dict(self, msg_obj: Any, ctx: SerializationContext = None) -> Dict:
-        if not is_dataclass(msg_obj):
-            raise TypeError("Message object must be a dataclass type")
-        msg_dict = {}
-        for attribute in fields(msg_obj):
-            msg_dict[attribute.name] = getattr(msg_obj, attribute.name)
-        return msg_dict
-    
-    def kafka_msg_from_dict(self, msg_dict: Dict, ctx: SerializationContext = None) -> Any:
-        msg_obj = self.msg_dataclass(**msg_dict)
-        return msg_obj
 
 class KafkaMsgProducer(Producer):
     def __init__(self,
                  topic: str,
                  producer_props: Dict[str, Union[str, int]],
-                 schema_handler: SchemaHandler,
                  serialisation_handler: SerialisationHandler,
-                 serialisation_cfg_manager: KafkaMsgSerialisationCfgManager,
+                 serialisation_cfg_manager: SerialisationCfgManager,
                  poll_interval: Optional[float] = 3,
                  flush_interval: Optional[float] = 15):
         
         self.topic = topic
         self.producer = Producer(producer_props)
         self.producer_props = producer_props
-        self.schema_handler = schema_handler
         self.serialisation_handler = serialisation_handler
         self.serialisation_cfg_manager = serialisation_cfg_manager
         self.poll_interval = poll_interval
@@ -397,110 +149,102 @@ class KafkaMsgProducerFactory:
     def __init__(self):
         pass
 
-    def create(self) -> KafkaMsgProducer:
+    def _setup_cfg(self,
+                   producer_topic_cfg: Dict[str, str],
+                   producer_props_cfg: Dict[str, Union[str, int]],
+                   producer_schema_registry_conn_cfg: Dict,
+                   producer_msg_serialisation_cfg: Dict) -> Dict:
+        
+        schema_registry_type = producer_schema_registry_conn_cfg['schema_registry_connector']['type']
 
-        topic = 'uncatg_landing_zone'
-    
-        producer_cfg_reader = KafkaProducerCfgReader()
-        producer_props_cfg = producer_cfg_reader.read_producer_props_cfg()
-        print(f'Producer properties: {producer_props_cfg}')
+        schema_registry_connector_factory_registry = SchemaRegistryConnectorFactoryRegistry()
+        schema_registry_connector_factory_registry.register_defaults(ACCEPTED_SCHEMA_REGISTRIES)
+        print(f'Created schema registry connector factory registry with accepted schema registries {ACCEPTED_SCHEMA_REGISTRIES}')
+        schema_registry_connector_factory = SchemaRegistryConnectorFactory(factory_registry=schema_registry_connector_factory_registry)
+        schema_registry_connector = schema_registry_connector_factory.create(schema_registry_type=schema_registry_type)
 
-        schema_registry_client_conf = {
-            'conf': {
-                'url': 'http://localhost:8081'
-            }
-        }
-
-        confluent_kafka_schema_registry_connector = ConfluentKafkaSchemaRegistryConnector()
-        confluent_kafka_schema_registry_client = confluent_kafka_schema_registry_connector.get_schema_registry_client(schema_registry_client_conf=schema_registry_client_conf)
-        schema_registry_client = confluent_kafka_schema_registry_client.get_client()
-
-        ACCEPTED_SERIALISATIONS = {
-            'confluent_kafka': {
-                'string': ConfluentKafkaStringSerialisation,
-                'avro': ConfluentKafkaAvroSerialisation
-            }   
-        }
-
-        schema_details = {
-            'subject_name': 'ConsumerGood-value'
-        }
-
-        schema_handler = SchemaHandler(schema_registry_client=confluent_kafka_schema_registry_client,
-                                    schema_details=schema_details)
-        schema = schema_handler.get_schema()
-
-        kafka_msg_converter = KafkaMsgConverter(msg_dataclass=ConsumerGood)
-        kafka_msg_from_dict_callable = kafka_msg_converter.get_kafka_msg_from_dict_callable()
-        kafka_msg_to_dict_callable = kafka_msg_converter.get_kafka_msg_to_dict_callable()
+        schema_registry_client_conf = producer_schema_registry_conn_cfg['schema_registry_connector']['schema_registry_client_conf']
+        schema_registry_client = schema_registry_connector.get_schema_registry_client(schema_registry_client_conf=schema_registry_client_conf)
 
         serialisation_factory_registry = SerialisationFactoryRegistry()
         serialisation_factory_registry.register_defaults(ACCEPTED_SERIALISATIONS)
         print(f'Created serialisation factory registry with accepted serialisations {ACCEPTED_SERIALISATIONS}')
         serialisation_factory = SerialisationFactory(factory_registry=serialisation_factory_registry)
 
-        key_serialisation_factory_cfg = {
-            'serialisation_library': 'confluent_kafka',
-            'serialisation_type': 'string'
-        }
-        val_serialisation_factory_cfg = {
-            'serialisation_library': 'confluent_kafka',
-            'serialisation_type': 'avro'
-        }
+        key_serialisation_factory_cfg = producer_msg_serialisation_cfg['key_serialisation']['key_serialisation_factory']
+        val_serialisation_factory_cfg = producer_msg_serialisation_cfg['val_serialisation']['val_serialisation_factory']
+        key_serialiser_cfg = producer_msg_serialisation_cfg['key_serialisation']['key_serialiser']
+        key_deserialiser_cfg = producer_msg_serialisation_cfg['key_serialisation']['key_deserialiser']
+        key_serialisation_cfg = producer_msg_serialisation_cfg['key_serialisation']['key_serialisation'] if 'key_serialisation' in producer_msg_serialisation_cfg['key_serialisation'].keys() else None
+        key_deserialisation_cfg = producer_msg_serialisation_cfg['key_serialisation']['key_deserialisation'] if 'key_deserialisation' in producer_msg_serialisation_cfg['key_serialisation'].keys() else None
+        val_serialiser_cfg = producer_msg_serialisation_cfg['val_serialisation']['val_serialiser']
+        val_deserialiser_cfg = producer_msg_serialisation_cfg['val_serialisation']['val_deserialiser']
+        val_serialisation_cfg = producer_msg_serialisation_cfg['val_serialisation']['val_serialisation'] if 'val_serialisation' in producer_msg_serialisation_cfg['val_serialisation'].keys() else None
+        val_deserialisation_cfg = producer_msg_serialisation_cfg['val_serialisation']['val_deserialisation'] if 'val_deserialisation' in producer_msg_serialisation_cfg['val_serialisation'].keys() else None
 
-        key_serialiser_cfg = {
-            'codec': 'utf8'
-        }
-        key_deserialiser_cfg = {
-            'codec': 'utf8'
-        }
-        key_serialisation_cfg = {}
-        key_deserialisation_cfg = {}
+        serialisation_cfg_manager = SerialisationCfgManager(key_serialisation_factory_cfg=key_serialisation_factory_cfg,
+                                                            val_serialisation_factory_cfg=val_serialisation_factory_cfg,
+                                                            key_serialiser_cfg=key_serialiser_cfg,
+                                                            key_deserialiser_cfg=key_deserialiser_cfg,
+                                                            key_serialisation_cfg=key_serialisation_cfg,
+                                                            key_deserialisation_cfg=key_deserialisation_cfg,
+                                                            val_serialiser_cfg=val_serialiser_cfg,
+                                                            val_deserialiser_cfg=val_deserialiser_cfg,
+                                                            val_serialisation_cfg=val_serialisation_cfg,
+                                                            val_deserialisation_cfg=val_deserialisation_cfg)
 
-        val_serialiser_cfg = {
-            'schema_registry_client': schema_registry_client,
-            'schema_str': schema,
-            'to_dict': kafka_msg_to_dict_callable
-        }
-        val_deserialiser_cfg = {
-            'schema_registry_client': schema_registry_client,
-            'schema_str': schema,
-            'from_dict': kafka_msg_from_dict_callable
-        }
-        val_serialisation_cfg = {
-            'ctx': SerializationContext(topic, MessageField.VALUE)
-        }
-        val_deserialisation_cfg = {
-            'ctx': SerializationContext(topic, MessageField.VALUE)
-        }
-
-        serialisation_cfg_manager = KafkaMsgSerialisationCfgManager(key_serialisation_factory_cfg=key_serialisation_factory_cfg,
-                                                                    val_serialisation_factory_cfg=val_serialisation_factory_cfg,
-                                                                    key_serialiser_cfg=key_serialiser_cfg,
-                                                                    key_deserialiser_cfg=key_deserialiser_cfg,
-                                                                    key_serialisation_cfg=key_serialisation_cfg,
-                                                                    key_deserialisation_cfg=key_deserialisation_cfg,
-                                                                    val_serialiser_cfg=val_serialiser_cfg,
-                                                                    val_deserialiser_cfg=val_deserialiser_cfg,
-                                                                    val_serialisation_cfg=val_serialisation_cfg,
-                                                                    val_deserialisation_cfg=val_deserialisation_cfg)
-
-        serialisation_handler = SerialisationHandler(schema_registry_client=confluent_kafka_schema_registry_client,
-                                                    serialisation_factory=serialisation_factory,
-                                                    serialisation_cfg_manager=serialisation_cfg_manager)
+        serialisation_handler = SerialisationHandler(schema_registry_client=schema_registry_client,
+                                                     serialisation_factory=serialisation_factory,
+                                                     serialisation_cfg_manager=serialisation_cfg_manager)
         serialisation_handler.setup_serialisation()
 
+        producer_setup_cfg = {
+            'topic': producer_topic_cfg['topic_name'],
+            'producer_props': producer_props_cfg,
+            'serialisation_handler': serialisation_handler,
+            'serialisation_cfg_manager': serialisation_cfg_manager
+        }
+
+        return producer_setup_cfg
+
+    def _create_producer(self,
+                         topic: str,
+                         producer_props: Dict[str, Union[str, int]],
+                         serialisation_handler: SerialisationHandler,
+                         serialisation_cfg_manager: SerialisationCfgManager) -> KafkaMsgProducer:
+        
         kafka_msg_producer = KafkaMsgProducer(topic=topic,
-                                            producer_props=producer_props_cfg,
-                                            schema_handler=schema_handler,
-                                            serialisation_handler=serialisation_handler,
-                                            serialisation_cfg_manager=serialisation_cfg_manager)
+                                              producer_props=producer_props,
+                                              serialisation_handler=serialisation_handler,
+                                              serialisation_cfg_manager=serialisation_cfg_manager)
+        return kafka_msg_producer
+
+    def create(self, producer_cfg_manager: KafkaProducerCfgManager) -> KafkaMsgProducer:
+
+        producer_topic_cfg = producer_cfg_manager.get_producer_topic_cfg()
+        producer_props_cfg = producer_cfg_manager.get_producer_props_cfg()
+        producer_schema_registry_conn_cfg = producer_cfg_manager.get_producer_schema_registry_conn_cfg()
+        producer_msg_serialisation_cfg = producer_cfg_manager.get_producer_msg_serialisation_cfg()
+    
+        producer_setup_cfg = self._setup_cfg(producer_topic_cfg=producer_topic_cfg,
+                                             producer_props_cfg=producer_props_cfg,
+                                             producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
+                                             producer_msg_serialisation_cfg=producer_msg_serialisation_cfg)
+        
+        kafka_msg_producer = self._create_producer(**producer_setup_cfg)
         
         return kafka_msg_producer
+    
+class KafkaTransactionalMsgProducerFactory(KafkaMsgProducerFactory):
+    def __init__(self):
+        pass
+
+    def create(self):
+        pass
 
 def produce_message():
 
-    producer_cfg_reader = KafkaProducerCfgReader()
+    producer_cfg_reader = KafkaProducerPropsCfgReader()
     producer_props_cfg = producer_cfg_reader.read_producer_props_cfg()
     print(f'Producer properties: {producer_props_cfg}')
 
@@ -597,5 +341,33 @@ def produce_message():
 if __name__ == '__main__':
     # produce_message()
 
+    producer_props_cfg_reader = KafkaProducerPropsCfgReader()
+    producer_props_cfg = producer_props_cfg_reader.read_producer_props_cfg()
+    print(f'Producer properties: {producer_props_cfg}')
+
+    producer_topic_cfg_reader = KafkaProducerTopicCfgReader()
+    producer_topic_cfg = producer_topic_cfg_reader.read_producer_topic_cfg()
+    print(f'Producer topic properties: {producer_topic_cfg}')
+
+    producer_schema_registry_conn_cfg_reader = KafkaProducerSchemaRegistryConnCfgReader()
+    producer_schema_registry_conn_cfg = producer_schema_registry_conn_cfg_reader.read_producer_schema_registry_conn_cfg()
+    print(f'Producer schema registry connector properties: {producer_schema_registry_conn_cfg}')
+
+    producer_msg_serialisation_cfg_reader = KafkaProducerMsgSerialisationCfgReader()
+    unrendered_producer_msg_serialisation_cfg = producer_msg_serialisation_cfg_reader.read_unrendered_msg_serialisation_cfg()
+    print(f'Unrendered producer msg serialisation properties: {unrendered_producer_msg_serialisation_cfg}')
+
+    producer_msg_serialisation_cfg_handler = KafkaProducerMsgSerialisationCfgHandler()
+    processed_producer_msg_serialisation_cfg = producer_msg_serialisation_cfg_handler.process_cfg(producer_topic_cfg=producer_topic_cfg,
+                                                                                                  producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
+                                                                                                  unrendered_producer_msg_serialisation_cfg=unrendered_producer_msg_serialisation_cfg)
+    print(f'Processed producer msg serialisation properties: {processed_producer_msg_serialisation_cfg}')
+
+    kafka_producer_cfg_manager = KafkaProducerCfgManager(producer_topic_cfg=producer_topic_cfg,
+                                                         producer_props_cfg=producer_props_cfg,
+                                                         producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
+                                                         producer_msg_serialisation_cfg=processed_producer_msg_serialisation_cfg)
+
     kafka_msg_producer_factory = KafkaMsgProducerFactory()
-    kafka_msg_producer = kafka_msg_producer_factory.create()
+    kafka_msg_producer = kafka_msg_producer_factory.create(producer_cfg_manager=kafka_producer_cfg_manager)
+    print(f'Created Kafka msg producer')

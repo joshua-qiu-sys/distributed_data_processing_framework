@@ -8,7 +8,6 @@ from batch_data_pipeline_app.batch_utils.pyspark_app_initialisers import Pyspark
 from batch_data_pipeline_app.batch_utils.data_validation import DatasetValidation
 from src.utils.data_pipeline import AbstractDataPipeline
 from src.utils.application_logger import ApplicationLogger
-
 from batch_data_pipeline_app.batch_utils.connector_management import ACCEPTED_CONNECTOR_TYPES
 
 logger = logging.getLogger('batch_ingestion_app')
@@ -168,10 +167,10 @@ if __name__ == '__main__':
     logger.info(f'Created connector factory')
 
     data_ingest_pipeline = DatasetIngestionPipeline(spark=spark,
-                                                 etl_id=etl_id,
-                                                 ingest_cfg_manager=ingest_cfg_manager,
-                                                 connector_factory=connector_factory,
-                                                 phases=['extraction', 'validation', 'load'])
+                                                    etl_id=etl_id,
+                                                    ingest_cfg_manager=ingest_cfg_manager,
+                                                    connector_factory=connector_factory,
+                                                    phases=['extraction', 'validation', 'load'])
     dataset = data_ingest_pipeline.get_dataset_name()
     data_ingest_pipeline.execute_pipeline()
     logger.info(f'Successfully executed data ingestion pipeline for ETL job {etl_id} and dataset {dataset}')

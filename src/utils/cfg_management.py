@@ -88,6 +88,15 @@ class YamlCfgReader(BaseCfgReader):
                 return cfg
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f'Error encountered while parsing YAML config {file_path} : {str(e)}')
+        
+    def read_unrendered_jinja_templated_cfg(self, file_path: Path) -> Dict:
+        try:
+            with open(file_path) as f:
+                file_contents = f.read().replace("{{", "'{{").replace("}}", "}}'")
+                cfg = yaml.safe_load(file_contents)
+                return cfg
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(f'Error encountered while parsing YAML config {file_path} : {str(e)}')
             
     def read_jinja_templated_cfg(self, file_path: Path, cfg_vars: Dict[str, Union[str, int, float]]) -> Dict:
         cfg = self.read_file(file_path=file_path)

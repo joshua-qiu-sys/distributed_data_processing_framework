@@ -103,10 +103,10 @@ def test_get_or_create_spark_session(spark_session_conf: SparkSessionConfFixture
     spark_app_conf_expected = spark_session_conf.expected
 
     spark_app_cfg_handler = PysparkAppCfgHandler(spark_app_conf_path=spark_app_conf_path,
-                                  spark_jars_conf_path=spark_jars_conf_path,
-                                  spark_app_conf_section=spark_app_conf_etl_id,
-                                  spark_jar_conf_section=spark_jars_conf_section,
-                                  spark_jar_path_dict=spark_jar_path_dict)
+                                                 spark_jars_conf_path=spark_jars_conf_path,
+                                                 spark_app_conf_section=spark_app_conf_etl_id,
+                                                 spark_jar_conf_section=spark_jars_conf_section,
+                                                 spark_jar_path_dict=spark_jar_path_dict)
     spark_app_props = spark_app_cfg_handler.get_app_props()
     spark_session_builder = PysparkSessionBuilder(app_name='Pyspark Test App', app_props=spark_app_props)
     spark = spark_session_builder.get_or_create_spark_session()

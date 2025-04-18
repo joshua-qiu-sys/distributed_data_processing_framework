@@ -1,0 +1,5 @@
+schema_registry_connector:
+  type: confluent_kafka
+  schema_registry_client_conf:
+    conf:
+      url: {{ schema_registry_server }}
