@@ -1,4 +1,4 @@
-from src.data_producers.random_data_generator.kafka_producer import KafkaMsgProducerFactory
+from src.data_producers.random_data_generator.kafka_producer import KafkaTransactionalMsgProducerFactory
 from src.data_producers.random_data_generator.kafka_producer_cfg_management import KafkaProducerCfgManager, KafkaProducerTopicCfgReader, KafkaProducerPropsCfgReader, KafkaProducerSchemaRegistryConnCfgReader, KafkaProducerMsgSerialisationCfgReader, KafkaProducerMsgSerialisationCfgHandler
 from src.data_producers.random_data_generator.consumer_good_generator import ConsumerGoodGenerator
 
@@ -33,10 +33,10 @@ if __name__ == '__main__':
                                                          producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
                                                          producer_msg_serialisation_cfg=processed_producer_msg_serialisation_cfg)
 
-    kafka_msg_producer_factory = KafkaMsgProducerFactory()
-    kafka_msg_producer = kafka_msg_producer_factory.create(producer_cfg_manager=kafka_producer_cfg_manager)
-    print(f'Created Kafka msg producer')
+    kafka_transactional_msg_producer_factory = KafkaTransactionalMsgProducerFactory()
+    kafka_transactional_msg_producer = kafka_transactional_msg_producer_factory.create(producer_cfg_manager=kafka_producer_cfg_manager)
+    print(f'Created Kafka transactional msg producer')
 
     while True:
         consumer_good_key, consumer_good = consumer_good_generator.generate_random_object_tuple()
-        kafka_msg_producer.produce(msg_key=consumer_good_key, msg_val=consumer_good)
+        kafka_transactional_msg_producer.produce(msg_key=consumer_good_key, msg_val=consumer_good)

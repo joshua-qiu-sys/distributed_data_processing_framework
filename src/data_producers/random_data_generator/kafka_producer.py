@@ -1,16 +1,11 @@
 from confluent_kafka import Producer, Message, KafkaError, KafkaException
-from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer, AvroDeserializer
-from confluent_kafka.serialization import StringSerializer, StringDeserializer, SerializationContext, MessageField
 from typing import Dict, Union, Any, Optional
-from random import choice
 import time
-from decimal import Decimal
 import logging
 from src.data_producers.random_data_generator.kafka_producer_cfg_management import KafkaProducerCfgManager, KafkaProducerTopicCfgReader, KafkaProducerPropsCfgReader, KafkaProducerSchemaRegistryConnCfgReader, KafkaProducerMsgSerialisationCfgReader, KafkaProducerMsgSerialisationCfgHandler
-from src.data_producers.random_data_generator.schemas.consumer_good import ConsumerGood
 from src.data_producers.random_data_generator.schema_registry_connector_management import SchemaRegistryConnectorFactory, SchemaRegistryConnectorFactoryRegistry
 from src.data_producers.random_data_generator.serialisation_management import SerialisationHandler, SerialisationFactory, SerialisationFactoryRegistry, SerialisationCfgManager
+from src.utils.constructors import AbstractFactory
 from src.data_producers.random_data_generator.schema_registry_connector_management import ACCEPTED_SCHEMA_REGISTRIES
 from src.data_producers.random_data_generator.serialisation_management import ACCEPTED_SERIALISATIONS
 
@@ -115,37 +110,51 @@ class KafkaMsgProducer(Producer):
             self.last_flush_time = time.time()
 
 class KafkaTransactionalMsgProducer(KafkaMsgProducer):
-    def __init__(self, producer_props: Dict[str, Union[str, int]]):
-        super().__init__(producer_props)
+    def __init__(self,
+                 topic: str,
+                 producer_props: Dict[str, Union[str, int]],
+                 serialisation_handler: SerialisationHandler,
+                 serialisation_cfg_manager: SerialisationCfgManager,
+                 poll_interval: Optional[float] = 10,
+                 flush_interval: Optional[float] = None):
+        
+        super().__init__(topic=topic,
+                         producer_props=producer_props,
+                         serialisation_handler=serialisation_handler,
+                         serialisation_cfg_manager=serialisation_cfg_manager,
+                         poll_interval=poll_interval,
+                         flush_interval=flush_interval)
         self._init_transactional_mode()
 
     def _init_transactional_mode(self) -> None:
         self.producer.init_transactions()
 
-    def _delivery_callback(self) -> None:
-        super()._delivery_callback()
+    def _delivery_callback(self, err: KafkaError, msg: Message) -> None:
+        super()._delivery_callback(err=err, msg=msg)
 
     def produce(self, msg_key: Any, msg_val: Any, poll_enabled: bool = True, flush_enabled: bool = False) -> None:
+
+        if poll_enabled and self.poll_interval is None:
+            raise ValueError(f'Producer cannot poll when poll interval is not set')
+        
+        if flush_enabled and self.flush_interval is None:
+            raise ValueError(f'Producer cannot flush when flush interval is not set')
+
         try:
             self.producer.begin_transaction()
-            super().produce(msg_key=msg_key, msg_val=msg_val)
+            super().produce_message(msg_key=msg_key, msg_val=msg_val)
             self.producer.commit_transaction()
             print("Transaction committed successfully")
 
             print(f'Message count: {self.msg_count}')
-            self.count += 1
+            self.msg_count += 1
         except BufferError:
             print(f'Buffer is full. Pausing for 2 seconds to allow messages to be sent from buffer before resuming.')
             time.sleep(2)
         except KafkaException as e:
             print(f'Kafka error occurred: {str(e)}')
 
-        if poll_enabled:
-            self.poll_on_interval()
-        if flush_enabled:
-            self.flush_on_interval()
-
-class KafkaMsgProducerFactory:
+class KafkaMsgProducerFactory(AbstractFactory):
     def __init__(self):
         pass
 
@@ -237,109 +246,36 @@ class KafkaMsgProducerFactory:
     
 class KafkaTransactionalMsgProducerFactory(KafkaMsgProducerFactory):
     def __init__(self):
-        pass
+        super().__init__()
 
-    def create(self):
-        pass
-
-def produce_message():
-
-    producer_cfg_reader = KafkaProducerPropsCfgReader()
-    producer_props_cfg = producer_cfg_reader.read_producer_props_cfg()
-    print(f'Producer properties: {producer_props_cfg}')
-
-    producer = Producer(producer_props_cfg)
-    producer.init_transactions()
-    print(f'Initiated producer transactions')
-
-    def consumer_good_to_dict(consumer_good: ConsumerGood, ctx: SerializationContext = None) -> Dict:
-        consumer_good_dict = {
-            'item': consumer_good.item,
-            'retailer': consumer_good.retailer,
-            'price': consumer_good.price
-        }
-        return consumer_good_dict
-
-    schema_registry_conf = {
-        'url': 'http://localhost:8081'
-    }
-    schema_registry = SchemaRegistryClient(schema_registry_conf)
-    consumer_good_schema = schema_registry.get_latest_version(subject_name='ConsumerGood-value')
-    consumer_good_schema_str = consumer_good_schema.schema.schema_str
-    avro_serialiser = AvroSerializer(schema_registry_client=schema_registry, schema_str=consumer_good_schema_str, to_dict=consumer_good_to_dict)
-    string_serialiser = StringSerializer('utf8')
-
-    def delivery_callback(err: KafkaError, msg: Message):
-        def consumer_good_from_dict(consumer_good_dict: Dict, ctx: SerializationContext = None) -> ConsumerGood:
-            consumer_good = ConsumerGood(item=consumer_good_dict['price'],
-                                         retailer=consumer_good_dict['retailer'],
-                                         price=consumer_good_dict['price'])
-            return consumer_good
+    def _setup_cfg(self,
+                   producer_topic_cfg: Dict[str, str],
+                   producer_props_cfg: Dict[str, Union[str, int]],
+                   producer_schema_registry_conn_cfg: Dict,
+                   producer_msg_serialisation_cfg: Dict) -> Dict:
         
-        if err:
-            print(f'ERROR: Message delivery failed: {err}')
-        else:
-            topic = msg.topic()
-            
-            string_deserialiser = StringDeserializer('utf8')
-            key = string_deserialiser(msg.key())
-            avro_deserialiser = AvroDeserializer(schema_registry_client=schema_registry, schema_str=consumer_good_schema_str, from_dict=consumer_good_from_dict)
-            value = avro_deserialiser(msg.value(), SerializationContext(topic, MessageField.VALUE))
-            print(f'SUCCESS: Message delivery succeeded: {{"topic": {topic}, "key": {key}, "value": {consumer_good_to_dict(value)}}}')
+        return super()._setup_cfg(producer_topic_cfg=producer_topic_cfg,
+                                  producer_props_cfg=producer_props_cfg,
+                                  producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
+                                  producer_msg_serialisation_cfg=producer_msg_serialisation_cfg)
+        
+    def _create_producer(self,
+                         topic: str,
+                         producer_props: Dict[str, Union[str, int]],
+                         serialisation_handler: SerialisationHandler,
+                         serialisation_cfg_manager: SerialisationCfgManager) -> KafkaTransactionalMsgProducer:
+        
+        kafka_transactional_msg_producer = KafkaTransactionalMsgProducer(topic=topic,
+                                                                         producer_props=producer_props,
+                                                                         serialisation_handler=serialisation_handler,
+                                                                         serialisation_cfg_manager=serialisation_cfg_manager)
 
-    topic = 'uncatg_landing_zone'
-    products = ['computer', 'television', 'smartphone', 'book', 'clothing', 'alarm clock', 'batteries', 'headphones',
-                'toothpaste', 'shampoo', 'laundry detergent', 'paper towels', 'charger', 'sunscreen', 'instant noodles',
-                'packaged snacks', 'light bulb', 'bottled water', 'air freshener', 'cooking oil', 'canned soup']
-    retailers = ['Woolworths', 'Coles', 'Aldi', 'IGA', 'Amazon', 'Costco']
-    prices = [Decimal('5.00'), Decimal('10.00'), Decimal('4.50'), Decimal('9.99'), Decimal('9.83'), Decimal('25.60'),
-              Decimal('35.40'), Decimal('23.87'), Decimal('15.00'), Decimal('12.30'), Decimal('2.01'), Decimal('7.45'),
-              Decimal('5.07'), Decimal('3.88'), Decimal('75.35'), Decimal('11.00'), Decimal('3.00'), Decimal('1.00'),
-              Decimal('9.90'), Decimal('78.39'), Decimal('2.00')]
-    count = 0
-    curr_time = time.time()
-    last_poll_time = curr_time
-    last_flush_time = curr_time
+        return kafka_transactional_msg_producer
 
-    while True:
-        try:
-            producer.begin_transaction()
-
-            key = str(products.index(choice(products)))
-            consumer_good_item = choice(products)
-            consumer_good_retailer = choice(retailers)
-            consumer_good_price = choice(prices)
-            consumer_good = ConsumerGood(item=consumer_good_item, retailer=consumer_good_retailer, price=consumer_good_price)
-
-            producer.produce(topic=topic,
-                             key=string_serialiser(key),
-                             value=avro_serialiser(consumer_good, SerializationContext(topic, MessageField.VALUE)),
-                             callback=delivery_callback)
-            print(f'Sent data to buffer: {{"topic": {topic}, "key": {key}, "value": {consumer_good_to_dict(consumer_good)}}}')
-            
-            producer.commit_transaction()
-            print("Transaction committed successfully")
-            print(f'Count: {count}')
-            count += 1
-        except BufferError:
-            print(f'Buffer is full. Pausing for 2 seconds to allow messages to be sent from buffer before resuming.')
-            time.sleep(2)
-        except KafkaException as e:
-            print(f'Kafka error occurred: {str(e)}')
-
-        curr_time = time.time()
-        poll_interval = 3
-        if curr_time >= last_poll_time + poll_interval:
-            print('Producer is polling. Handling delivery callback responses from brokers...')
-            producer.poll(poll_interval)
-            last_poll_time = curr_time
-        # if curr_time >= last_flush_time + flush_interval:
-        #     print('Producer is flushing records to brokers. Blocking current thread until completion...')
-        #     producer.flush()
-        #     last_flush_time = curr_time
+    def create(self, producer_cfg_manager: KafkaProducerCfgManager) -> KafkaTransactionalMsgProducer:
+        return super().create(producer_cfg_manager=producer_cfg_manager)
 
 if __name__ == '__main__':
-    # produce_message()
 
     producer_props_cfg_reader = KafkaProducerPropsCfgReader()
     producer_props_cfg = producer_props_cfg_reader.read_producer_props_cfg()
@@ -368,6 +304,6 @@ if __name__ == '__main__':
                                                          producer_schema_registry_conn_cfg=producer_schema_registry_conn_cfg,
                                                          producer_msg_serialisation_cfg=processed_producer_msg_serialisation_cfg)
 
-    kafka_msg_producer_factory = KafkaMsgProducerFactory()
-    kafka_msg_producer = kafka_msg_producer_factory.create(producer_cfg_manager=kafka_producer_cfg_manager)
-    print(f'Created Kafka msg producer')
+    kafka_transactional_msg_producer_factory = KafkaTransactionalMsgProducerFactory()
+    kafka_transactional_msg_producer = kafka_transactional_msg_producer_factory.create(producer_cfg_manager=kafka_producer_cfg_manager)
+    print(f'Created Kafka transactional msg producer')
