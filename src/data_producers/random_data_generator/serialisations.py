@@ -81,26 +81,26 @@ class ConfluentKafkaAvroSerialisation(AbstractConfluentKafkaSerialisation):
         deserialised_obj = self.deserialiser(bytes_obj, **deserialisation_cfg)
         return deserialised_obj
     
-class KafkaMsgConverter:
-    def __init__(self, msg_dataclass: Type[Any]):
-        if not is_dataclass(msg_dataclass):
-            raise TypeError("Message class must be a dataclass type")
-        self.msg_dataclass = msg_dataclass
+class ObjectSerialisation:
+    def __init__(self, obj_dataclass: Type[Any]):
+        if not is_dataclass(obj_dataclass):
+            raise TypeError("Object class must be a dataclass type")
+        self.obj_dataclass = obj_dataclass
 
-    def get_kafka_msg_to_dict_callable(self) -> Callable:
-        return self.kafka_msg_to_dict
+    def get_obj_to_dict_callable(self) -> Callable:
+        return self.obj_to_dict
     
-    def get_kafka_msg_from_dict_callable(self) -> Callable:
-        return self.kafka_msg_from_dict
+    def get_obj_from_dict_callable(self) -> Callable:
+        return self.obj_from_dict
     
-    def kafka_msg_to_dict(self, msg_obj: Any, ctx: SerializationContext = None) -> Dict:
-        if not is_dataclass(msg_obj):
-            raise TypeError("Message object must be a dataclass type")
-        msg_dict = {}
-        for attribute in fields(msg_obj):
-            msg_dict[attribute.name] = getattr(msg_obj, attribute.name)
-        return msg_dict
+    def obj_to_dict(self, obj: Any, ctx: SerializationContext = None) -> Dict:
+        if not is_dataclass(obj):
+            raise TypeError("Object must be a dataclass type")
+        obj_dict = {}
+        for attribute in fields(obj):
+            obj_dict[attribute.name] = getattr(obj, attribute.name)
+        return obj_dict
     
-    def kafka_msg_from_dict(self, msg_dict: Dict, ctx: SerializationContext = None) -> Any:
-        msg_obj = self.msg_dataclass(**msg_dict)
-        return msg_obj
+    def obj_from_dict(self, obj_dict: Dict, ctx: SerializationContext = None) -> Any:
+        obj = self.obj_dataclass(**obj_dict)
+        return obj

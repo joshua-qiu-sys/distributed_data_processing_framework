@@ -54,7 +54,7 @@ class KafkaMsgProducer(Producer):
             val = self.serialisation_handler.get_val_serialisation().deserialise(bytes_obj=msg.value(), deserialiser_cfg=val_deserialiser_cfg, deserialisation_cfg=val_deserialisation_cfg)
 
             val_to_dict_callable = self.serialisation_cfg_manager.get_val_serialiser_cfg()['to_dict'] if 'to_dict' in self.serialisation_cfg_manager.get_val_serialiser_cfg().keys() else None
-            print(f'SUCCESS: Message delivery succeeded: {{"topic": {topic}, "key": {key}, "value": {val_to_dict_callable(msg_obj=val)}}}')
+            print(f'SUCCESS: Message delivery succeeded: {{"topic": {topic}, "key": {key}, "value": {val_to_dict_callable(obj=val)}}}')
 
     def produce(self, msg_key: Any, msg_val: Any, poll_enabled: bool = True, flush_enabled: bool = True) -> None:
 
@@ -98,7 +98,7 @@ class KafkaMsgProducer(Producer):
                               callback=self._delivery_callback)
         
         val_to_dict_callable = self.serialisation_cfg_manager.get_val_serialiser_cfg()['to_dict'] if 'to_dict' in self.serialisation_cfg_manager.get_val_serialiser_cfg().keys() else None
-        print(f'Sent data to buffer: {{"topic": {self.topic}, "key": {msg_key}, "value": {val_to_dict_callable(msg_val)}}}')
+        print(f'Sent data to buffer: {{"topic": {self.topic}, "key": {msg_key}, "value": {val_to_dict_callable(obj=msg_val)}}}')
 
     def poll_on_interval(self) -> None:
         curr_time = time.time()

@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 from src.data_producers.random_data_generator.schema_registry_connector_management import SchemaRegistryConnectorFactoryRegistry, SchemaRegistryConnectorFactory
 from src.data_producers.random_data_generator.schema_management import SchemaHandler
-from src.data_producers.random_data_generator.serialisations import KafkaMsgConverter
+from src.data_producers.random_data_generator.serialisations import ObjectSerialisation
 from src.data_producers.random_data_generator.consumer_good_generator import ConsumerGood
 from src.utils.cfg_management import BaseCfgReader, YamlCfgReader, IniCfgReader, AbstractCfgHandler, AbstractCfgManager
 from src.data_producers.random_data_generator.schema_registry_connector_management import ACCEPTED_SCHEMA_REGISTRIES
@@ -146,29 +146,41 @@ class KafkaProducerMsgSerialisationCfgHandler(AbstractCfgHandler):
                 msg_key_dataclass_name = unrendered_producer_msg_serialisation_cfg['key_serialisation']['kafka_msg_converter']['msg_dataclass_name']
                 msg_key_dataclass = self.__class__._get_msg_dataclass(msg_dataclass_name=msg_key_dataclass_name)
 
-                kafka_msg_key_converter = KafkaMsgConverter(msg_dataclass=msg_key_dataclass)
-                kafka_msg_key_from_dict_callable = kafka_msg_key_converter.get_kafka_msg_from_dict_callable()
-                kafka_msg_key_to_dict_callable = kafka_msg_key_converter.get_kafka_msg_to_dict_callable()
+                kafka_msg_key_converter = ObjectSerialisation(obj_dataclass=msg_key_dataclass)
+                kafka_msg_key_from_dict_callable = kafka_msg_key_converter.get_obj_from_dict_callable()
+                kafka_msg_key_to_dict_callable = kafka_msg_key_converter.get_obj_to_dict_callable()
             else:
                 msg_val_dataclass_name = unrendered_producer_msg_serialisation_cfg['val_serialisation']['kafka_msg_converter']['msg_dataclass_name']
                 msg_val_dataclass = self.__class__._get_msg_dataclass(msg_dataclass_name=msg_val_dataclass_name)
 
-                kafka_msg_val_converter = KafkaMsgConverter(msg_dataclass=msg_val_dataclass)
-                kafka_msg_val_from_dict_callable = kafka_msg_val_converter.get_kafka_msg_from_dict_callable()
-                kafka_msg_val_to_dict_callable = kafka_msg_val_converter.get_kafka_msg_to_dict_callable()
+                kafka_msg_val_converter = ObjectSerialisation(obj_dataclass=msg_val_dataclass)
+                kafka_msg_val_from_dict_callable = kafka_msg_val_converter.get_obj_from_dict_callable()
+                kafka_msg_val_to_dict_callable = kafka_msg_val_converter.get_obj_to_dict_callable()
 
             rendered_producer_msg_serialisation_cfg = unrendered_producer_msg_serialisation_cfg.copy()
             if 'schema_registry_client' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser'].keys():
                 rendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser']['schema_registry_client'] = client
+
+            if 'schema_registry_client' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialiser'].keys():
+                rendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialiser']['schema_registry_client'] = client
             
             if 'schema_registry_client' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialiser'].keys():
                 rendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialiser']['schema_registry_client'] = client
 
+            if 'schema_registry_client' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialiser'].keys():
+                rendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialiser']['schema_registry_client'] = client
+
             if 'schema_str' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser'].keys():
                 rendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser']['schema_str'] = key_schema
 
+            if 'schema_str' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialiser'].keys():
+                rendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialiser']['schema_str'] = key_schema
+
             if 'schema_str' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialiser'].keys():
                 rendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialiser']['schema_str'] = val_schema
+
+            if 'schema_str' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialiser'].keys():
+                rendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialiser']['schema_str'] = val_schema
 
             if 'to_dict' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser'].keys():
                 rendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialiser']['to_dict'] = kafka_msg_key_to_dict_callable
@@ -185,10 +197,18 @@ class KafkaProducerMsgSerialisationCfgHandler(AbstractCfgHandler):
             if 'key_serialisation' in unrendered_producer_msg_serialisation_cfg['key_serialisation'].keys():
                 if 'ctx' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialisation'].keys():
                     rendered_producer_msg_serialisation_cfg['key_serialisation']['key_serialisation']['ctx'] = SerializationContext(producer_topic_cfg['topic_name'], MessageField.KEY)
-                    
+            
+            if 'key_deserialisation' in unrendered_producer_msg_serialisation_cfg['key_serialisation'].keys():
+                if 'ctx' in unrendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialisation'].keys():
+                    rendered_producer_msg_serialisation_cfg['key_serialisation']['key_deserialisation']['ctx'] = SerializationContext(producer_topic_cfg['topic_name'], MessageField.KEY)
+
             if 'val_serialisation' in unrendered_producer_msg_serialisation_cfg['val_serialisation'].keys():
                 if 'ctx' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialisation'].keys():
                     rendered_producer_msg_serialisation_cfg['val_serialisation']['val_serialisation']['ctx'] = SerializationContext(producer_topic_cfg['topic_name'], MessageField.VALUE)
+
+            if 'val_deserialisation' in unrendered_producer_msg_serialisation_cfg['val_serialisation'].keys():
+                if 'ctx' in unrendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialisation'].keys():
+                    rendered_producer_msg_serialisation_cfg['val_serialisation']['val_deserialisation']['ctx'] = SerializationContext(producer_topic_cfg['topic_name'], MessageField.VALUE)
 
             if 'kafka_msg_converter' in unrendered_producer_msg_serialisation_cfg['key_serialisation'].keys():
                 rendered_producer_msg_serialisation_cfg['key_serialisation']['kafka_msg_converter'] = msg_key_dataclass
