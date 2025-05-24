@@ -1,6 +1,47 @@
 from confluent_kafka import Consumer
+from typing import Dict
 import threading
 from read_kafka_consumer_cfg import KafkaConsumerCfgReader
+
+class KafkaMsgConsumer:
+    def __init__(self,
+                 topic: str,
+                 consumer_props_cfg: Dict,
+                 poll_interval: int = 1,
+                 commit_count: int = 10):
+        
+        self.topic = topic
+        self.consumer_props_cfg = consumer_props_cfg
+        self.poll_interval = poll_interval
+        self.commit_count = commit_count
+
+        self.msg_count = 0
+        self.is_rebalancing = threading.Event()
+        self.is_rebalancing.set()
+
+    def _commit_callback(self, err, partitions):
+        if err:
+            print(f'ERROR: Commit failed: {err}')
+        else:
+            print(f'SUCCESS: Commit succeeded for partitions: {partitions}')
+
+    def _on_assign_callback(self, consumer, partitions):
+        print(f'Consumer group rebalance - partitions have been assigned to consumer: {partitions}')
+        self.is_rebalancing.clear()
+
+    def _on_revoke_callback(self, consumer, partitions):
+        print(f'Consumer group rebalance - partitions have been revoked from consumer: {partitions}')
+        self.is_rebalancing.set()
+
+    def _on_lost_callback(self, consumer, partitions):
+        print(f'Consumer group rebalance - partitions have been lost from consumer: {partitions}')
+        self.is_rebalancing.set()
+
+    def consume():
+        pass
+
+    def consume_message():
+        pass
 
 def consume_message():
 
@@ -11,7 +52,11 @@ def consume_message():
             print(f'SUCCESS: Commit succeeded for partitions: {partitions}')
 
     consumer_cfg_reader = KafkaConsumerCfgReader()
-    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg(consumer_on_commit_callback_func=commit_callback)
+    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg()
+    consumer_props_cfg.update({
+        'on_commit': commit_callback
+    })
+
     print(f'Consumer properties: {consumer_props_cfg}')
 
     consumer = Consumer(consumer_props_cfg)

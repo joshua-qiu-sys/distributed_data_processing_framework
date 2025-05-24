@@ -16,7 +16,6 @@ class KafkaConsumerCfgReader(BaseCfgReader):
 
     def read_consumer_props_cfg(self,
                                 consumer_props_conf_path: Path = STREAM_INGEST_KAFKA_CONSUMER_CONF_PATH,
-                                consumer_on_commit_callback_func: Callable = None,
                                 kafka_cluster_conf_path: Optional[Path] = KAFKA_CLUSTER_CONF_PATH,
                                 kafka_cluster_conf_section: Optional[str] = 'DEFAULT') -> Dict[str, Union[str, int, Callable]]:
         
@@ -30,21 +29,10 @@ class KafkaConsumerCfgReader(BaseCfgReader):
             cfg_vars = kafka_cluster_cfg
             rendered_consumer_props_cfg = yml_cfg_reader.read_jinja_templated_cfg(file_path=consumer_props_conf_path,
                                                                                   cfg_vars=cfg_vars)
-            if consumer_on_commit_callback_func is not None:
-                rendered_consumer_props_cfg.update({
-                    'on_commit': consumer_on_commit_callback_func
-                })
-            
             return rendered_consumer_props_cfg
         
 if __name__ == '__main__':
-
-    def commit_callback(err, partitions):
-        if err:
-            print(f'ERROR: Commit failed: {err}')
-        else:
-            print(f'SUCCESS: Commit succeeded for partitions: {partitions}')
     
     consumer_cfg_reader = KafkaConsumerCfgReader()
-    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg(consumer_on_commit_callback_func=commit_callback)
+    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg()
     print(f'Consumer properties: {consumer_props_cfg}')

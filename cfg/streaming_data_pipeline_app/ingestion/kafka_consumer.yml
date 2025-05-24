@@ -7,7 +7,6 @@
 "fetch.max.bytes": 52428800 # 50MB
 "max.partition.fetch.bytes": 1048576 # 1MB
 "enable.auto.commit": false
-"on_commit": {{ on_commit_callback }}
 "auto.offset.reset": latest
 "heartbeat.interval.ms": 3000 # 3s
 "session.timeout.ms": 15000 # 15s
