@@ -1,19 +1,41 @@
 from confluent_kafka import Consumer
-from typing import Dict
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.serialization import SerializationContext, MessageField
+from typing import Dict, Optional, Union, Any, Type
 import threading
+import time
 from read_kafka_consumer_cfg import KafkaConsumerCfgReader
+from src.data_producers.random_data_generator.serialisations import ObjectSerialisation
+from src.data_producers.random_data_generator.schemas.consumer_good import ConsumerGood
 
 class KafkaMsgConsumer:
     def __init__(self,
                  topic: str,
+                 schema_subject_name: str,
                  consumer_props_cfg: Dict,
+                 msg_val_dataclass: Type[Any],
                  poll_interval: int = 1,
-                 commit_count: int = 10):
+                 commit_count: int = 10,
+                 schema_ttl: int = 86400):
         
         self.topic = topic
+        self.schema_subject_name = schema_subject_name
         self.consumer_props_cfg = consumer_props_cfg
+        self.consumer_props_cfg.update({
+            'on_commit': self._commit_callback
+        })
+        self.consumer = Consumer(self.consumer_props_cfg)
+
         self.poll_interval = poll_interval
         self.commit_count = commit_count
+        self.schema_ttl = schema_ttl
+        self.schema_last_fetched_timestamp = None
+        self.schema_str = None
+        self.schema_registry_client = None
+        self._setup_schema_registry_client_conn()
+        self._fetch_latest_schema()
+        self.msg_val_dataclass = msg_val_dataclass
 
         self.msg_count = 0
         self.is_rebalancing = threading.Event()
@@ -37,79 +59,72 @@ class KafkaMsgConsumer:
         print(f'Consumer group rebalance - partitions have been lost from consumer: {partitions}')
         self.is_rebalancing.set()
 
-    def consume():
-        pass
+    def _setup_schema_registry_client_conn(self):
+        schema_registry_client_conf = {
+            'url': 'http://localhost:8081'
+        }
+        self.schema_registry_client = SchemaRegistryClient(conf=schema_registry_client_conf)
 
-    def consume_message():
-        pass
+    def _fetch_latest_schema(self):
+        schema_res = self.schema_registry_client.get_latest_version(subject_name=self.schema_subject_name)
+        schema_str = schema_res.schema.schema_str
+        self.schema_str = schema_str
+        self.schema_last_fetched_timestamp = time.time()
 
-def consume_message():
+    def consume(self):
+        if self.poll_interval is None:
+            raise ValueError(f'Consumer cannot poll for messages when poll interval is not set')
 
-    def commit_callback(err, partitions):
-        if err:
-            print(f'ERROR: Commit failed: {err}')
-        else:
-            print(f'SUCCESS: Commit succeeded for partitions: {partitions}')
+        self.consumer.subscribe([self.topic], on_assign=self._on_assign_callback, on_revoke=self._on_revoke_callback, on_lost=self._on_lost_callback)
+        self.consume_messages()
 
-    consumer_cfg_reader = KafkaConsumerCfgReader()
-    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg()
-    consumer_props_cfg.update({
-        'on_commit': commit_callback
-    })
+    def consume_messages(self):
 
-    print(f'Consumer properties: {consumer_props_cfg}')
+        curr_time = time.time()
+        if self.schema_last_fetched_timestamp is None:
+            self._fetch_latest_schema()
+        elif curr_time - self.schema_last_fetched_timestamp > self.schema_ttl:
+            self._fetch_latest_schema()
 
-    consumer = Consumer(consumer_props_cfg)
-
-    is_rebalancing = threading.Event()
-    is_rebalancing.set()
-
-    def on_assign_callback(consumer, partitions):
-        print(f'Consumer group rebalance - partitions have been assigned to consumer: {partitions}')
-        is_rebalancing.clear()
-
-    def on_revoke_callback(consumer, partitions):
-        print(f'Consumer group rebalance - partitions have been revoked from consumer: {partitions}')
-        is_rebalancing.set()
-
-    def on_lost_callback(consumer, partitions):
-        print(f'Consumer group rebalance - partitions have been lost from consumer: {partitions}')
-        is_rebalancing.set()
-
-    topic = 'uncatg_landing_zone'
-    consumer.subscribe([topic], on_assign=on_assign_callback, on_revoke=on_revoke_callback, on_lost=on_lost_callback)
-
-    poll_interval = 1
-    commit_count = 5
-
-    count = 0
-    try:
-        while True:
-            msg = consumer.poll(poll_interval)
-            if msg is None:
-                if is_rebalancing.is_set():
-                    print('Waiting for consumer group rebalancing to complete...')
+        try:
+            while True:
+                msg = self.consumer.poll(self.poll_interval)
+                if msg is None:
+                    if self.is_rebalancing.is_set():
+                        print('Waiting for consumer group rebalancing to complete...')
+                    else:
+                        print('Waiting for messages to arrive...')
+                elif msg.error():
+                    print(f'ERROR: {msg.error}')
                 else:
-                    print('Waiting for messages to arrive...')
-            elif msg.error():
-                print(f'ERROR: {msg.error}')
-            else:
-                topic=msg.topic()
-                key=msg.key().decode('utf-8')
-                value=msg.value().decode('utf-8')
-                print(f'Received event: {{"topic": {topic}, "key": {key}, "value": {value}}}')
-                print(f'Count: {count}')
+                    topic=msg.topic()
+                    key=msg.key().decode('utf-8')
+                    value=self.deserialise_msg(msg_value=msg.value())
+                    print(f'Received event: {{"topic": {topic}, "key": {key}, "value": {value}}}')
+                    print(f'Count: {self.msg_count}')
 
-                if count % commit_count == 0:
-                    consumer.commit(asynchronous=True)
-                    print(f'Committed offsets asynchronously')
-                    assigned_partitions = consumer.assignment()
-                    curr_partition_offsets = consumer.position(assigned_partitions)
-                    for tp in curr_partition_offsets:
-                        print(f'Current offset position for topic {tp.topic} partition {tp.partition}: {tp.offset}')
-                count += 1
-    finally:
-        consumer.close()
+                    if self.msg_count % self.commit_count == 0:
+                        self.consumer.commit(asynchronous=True)
+                        print(f'Committed offsets asynchronously')
+                        assigned_partitions = self.consumer.assignment()
+                        curr_partition_offsets = self.consumer.position(assigned_partitions)
+                        for tp in curr_partition_offsets:
+                            print(f'Current offset position for topic {tp.topic} partition {tp.partition}: {tp.offset}')
+                    self.msg_count += 1
+        finally:
+            self.consumer.close()
+    
+    def deserialise_msg(self, msg_value: Optional[Union[str, bytes]]):
+        msg_val_from_dict_callable = ObjectSerialisation(obj_dataclass=self.msg_val_dataclass).get_obj_from_dict_callable()
+        avro_deserialiser = AvroDeserializer(schema_registry_client=self.schema_registry_client, schema_str=self.schema_str, from_dict=msg_val_from_dict_callable)
+        deserisalised_msg_value = avro_deserialiser(data=msg_value, ctx=SerializationContext(topic=self.topic, field=MessageField.VALUE))
+        return deserisalised_msg_value
 
 if __name__ == '__main__':
-    consume_message()
+    consumer_cfg_reader = KafkaConsumerCfgReader()
+    consumer_props_cfg = consumer_cfg_reader.read_consumer_props_cfg()
+    kafka_consumer = KafkaMsgConsumer(topic='uncatg_landing_zone',
+                                      schema_subject_name='ConsumerGood-value',
+                                      consumer_props_cfg=consumer_props_cfg,
+                                      msg_val_dataclass=ConsumerGood)
+    kafka_consumer.consume()
