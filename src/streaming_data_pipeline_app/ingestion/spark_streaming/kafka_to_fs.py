@@ -17,6 +17,8 @@ def main():
         .writeStream \
         .outputMode("append") \
         .format("console") \
+        .option("checkpointLocation", 'tmp/spark/checkpoints/kafka_to_fs') \
+        .trigger(processingTime='500 milliseconds') \
         .start()
     
     strm_query.awaitTermination()
