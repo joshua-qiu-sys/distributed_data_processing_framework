@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses_avroschema import AvroModel, types
 from typing import Type
+import datetime as dt
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient, Schema
 
 @dataclass
@@ -8,6 +9,7 @@ class ConsumerGood(AvroModel):
     item: str
     retailer: str
     price: types.condecimal(max_digits=10, decimal_places=2)
+    txn_timestamp: dt.datetime = dt.datetime(year=2000, month=1, day=1)
 
     class Meta:
         namespace = "consumer_good.avro"
