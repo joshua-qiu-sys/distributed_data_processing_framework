@@ -7,5 +7,8 @@ apache-airflow
 apache-airflow-providers-apache-spark
 confluent-kafka
 dataclasses-avroschema
+apache-flink
+google-cloud-storage
 cachetools
 authlib
+openlineage-python

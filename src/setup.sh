@@ -26,5 +26,8 @@ echo "Added Airflow connections specified in $AIRFLOW_CONNECTIONS_PY_FILE"
 export CONFLUENT_KAFKA_HOME="/opt/kafka/confluent-7.9.0"
 echo "CONFLUENT_KAFKA_HOME is set to: $CONFLUENT_KAFKA_HOME"
 
+export FLINK_HOME="/opt/flink/flink-2.1.0"
+echo "FLINK_HOME is set to: $FLINK_HOME"
+
 sudo service ssh start
 echo "Started sshd service"
