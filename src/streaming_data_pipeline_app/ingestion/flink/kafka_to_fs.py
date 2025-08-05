@@ -1,8 +1,11 @@
-from pyflink.datastream import StreamExecutionEnvironment, RuntimeExecutionMode
+from pyflink.datastream import StreamExecutionEnvironment, RuntimeExecutionMode, CheckpointingMode
 from pyflink.datastream.connectors.file_system import FileSink
 from pyflink.datastream.connectors.kafka import KafkaSource, KafkaOffsetsInitializer
 from pyflink.datastream.functions import KeyedProcessFunction
 from pyflink.datastream.state import ListStateDescriptor, ValueStateDescriptor
+from pyflink.datastream.state_backend import EmbeddedRocksDBStateBackend
+from pyflink.datastream.checkpoint_storage import FileSystemCheckpointStorage
+from pyflink.common import Configuration
 from pyflink.common.serialization import Encoder, SimpleStringSchema
 from pyflink.common.watermark_strategy import WatermarkStrategy, Duration, TimestampAssigner
 from pyflink.common.typeinfo import Types
@@ -35,6 +38,11 @@ class DropLateRecordsKeyedProcessFunction(KeyedProcessFunction):
                     ctx.timer_service().register_processing_time_timer(updated_late_records_state_expiry_ts)
                     self.late_records_timer_state.update(updated_late_records_state_expiry_ts)
                     print(f'Registered new timer for current key {ctx.get_current_key()}: {self.late_records_timer_state.value()}')
+            else:
+                ctx.timer_service().register_processing_time_timer(updated_late_records_state_expiry_ts)
+                self.late_records_timer_state.update(updated_late_records_state_expiry_ts)
+                print(f'Registered new timer for current key {ctx.get_current_key()}: {self.late_records_timer_state.value()}')
+
             self.late_records_list_state.add(value)
             print(f'Dropped late records for current key {ctx.get_current_key()}: {list(self.late_records_list_state.get())}')
             return None
@@ -57,17 +65,17 @@ class RecordTimestampAssigner(TimestampAssigner):
     def extract_timestamp(self, value, record_timestamp):
         ts_millis = int(dt.datetime.strptime(value.split('|')[3], "%Y-%m-%d %H:%M:%S").timestamp() * 1000)
         return ts_millis
-    
-class RecordTimestampAssigner(TimestampAssigner):
-    def extract_timestamp(self, value, record_timestamp):
-        ts_millis = int(value.split('|')[3])
-        print(f'timestamp_assigner_millis: {ts_millis}')
-        return []
 
-env = StreamExecutionEnvironment.get_execution_environment()
+config = Configuration()
+config.set_string('state.backend', 'rocksdb')
+config.set_string('state.backend.rocksdb.localdir', '/home/joshuaqiu/Projects/distributed_data_processing_framework/tmp/rocksdb/flink/kafka_to_fs')
+config.set_string('execution.checkpointing.dir', 'file:///home/joshuaqiu/Projects/distributed_data_processing_framework/tmp/flink/checkpoints/kafka_to_fs')
+env = StreamExecutionEnvironment.get_execution_environment(config)
 env.set_runtime_mode(RuntimeExecutionMode.STREAMING)
 env.get_config().set_auto_watermark_interval(200)
-env.set_parallelism(1)
+env.set_parallelism(3)
+env.enable_checkpointing(1000)
+env.get_checkpoint_config().set_checkpointing_mode(CheckpointingMode.EXACTLY_ONCE)
 
 kafka_source = KafkaSource.builder() \
     .set_bootstrap_servers('localhost:9093,localhost:8093,localhost:7093') \
